@@ -6,84 +6,137 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HDNodeWallet } from 'ethers'
+import { HDNodeWallet, LangEn } from 'ethers'
 import { LangJa } from '../utils/lang-ja'
 import { Client, LoadKey, type CoreDomain, CommputeCCID } from '@concurrent-world/client'
 import type { ConcurrentTheme } from '../model'
 import { usePersistent } from '../hooks/usePersistent'
-import { Themes, createConcurrentTheme } from '../themes'
+import { Themes, loadConcurrentTheme } from '../themes'
 import { ThemeProvider } from '@emotion/react'
-import { CssBaseline, darken } from '@mui/material'
+import { CssBaseline, IconButton, InputAdornment, darken } from '@mui/material'
 import { ConcurrentWordmark } from '../components/theming/ConcurrentWordmark'
 import { IsValid256k1PrivateKey } from '@concurrent-world/client'
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import { useTranslation } from 'react-i18next'
 
 export function AccountImport(): JSX.Element {
+    const { t } = useTranslation('', { keyPrefix: 'import' })
+
     const [themeName, setThemeName] = usePersistent<string>('Theme', 'blue2')
-    const [theme, setTheme] = useState<ConcurrentTheme>(createConcurrentTheme(themeName))
+    const [theme, setTheme] = useState<ConcurrentTheme>(loadConcurrentTheme(themeName))
 
     const themes: string[] = Object.keys(Themes)
     const randomTheme = (): void => {
         const box = themes.filter((e) => e !== themeName)
         const newThemeName = box[Math.floor(Math.random() * box.length)]
         setThemeName(newThemeName)
-        setTheme(createConcurrentTheme(newThemeName))
+        setTheme(loadConcurrentTheme(newThemeName))
     }
 
-    const [mnemonic, setMnemonic] = useState<string>('')
     const [secret, setSecret] = useState<string>('')
+    const [mnemonic, setMnemonic] = useState<string>('')
     const [server, setServer] = useState<string>('')
     const [host, setHost] = useState<CoreDomain>()
     const [entityFound, setEntityFound] = useState<boolean>(false)
     const [client, initializeClient] = useState<Client>()
     const [errorMessage, setErrorMessage] = useState<string>('')
+    const [suggestFailed, setSuggestFailed] = useState<boolean>(false)
+    const [showSecret, setShowSecret] = useState<boolean>(false)
 
     const [privatekey, setPrivatekey] = useState<string>('')
+    const [ccid, setCcid] = useState<string>('')
+
+    const [legacySearched, setLegacySearched] = useState<boolean>(false)
 
     useEffect(() => {
-        let privatekey = ''
-        let ccid = ''
-        setServer('')
-        setErrorMessage('')
-        setEntityFound(false)
-        if (mnemonic === '') {
-            if (!IsValid256k1PrivateKey(secret)) {
-                setErrorMessage('秘密鍵の要件を満たしていません。秘密鍵でないか入力に誤りがあります。')
-                return
-            }
-            const key = LoadKey(secret)
-            console.log(key)
-            if (!key) return
-            privatekey = key.privatekey
-            ccid = CommputeCCID(key.publickey)
-        } else {
-            try {
-                const wallet = HDNodeWallet.fromPhrase(mnemonic.trim(), undefined, undefined, LangJa.wordlist()) // TODO: move to utils
-                privatekey = wallet.privateKey.slice(2)
-                ccid = 'CC' + wallet.address.slice(2)
-            } catch (e) {
-                console.log(e)
-                setErrorMessage('シークレットコードが正しくありません。')
-                return
-            }
-        }
+        if (!privatekey) return
+        const key = LoadKey(privatekey)
+        if (!key) return
+        const ccid = CommputeCCID(key.publickey)
+        setCcid(ccid)
 
-        setPrivatekey(privatekey)
-
-        try {
-            const hubClient = new Client(privatekey, 'hub.concurrent.world', 'stab-client')
-            hubClient.api.readEntity(ccid).then((entity) => {
+        setErrorMessage(t('searching'))
+        const hubClient = new Client(privatekey, 'hub.concurrent.world', 'stab-client')
+        hubClient.api
+            .readEntity(ccid)
+            .then((entity) => {
                 console.log(entity)
                 if (entity && entity.ccid === ccid) {
                     setServer(entity.domain || 'hub.concurrent.world')
                     setEntityFound(true)
                 } else {
-                    setErrorMessage('お住まいのサーバーが見つかりませんでした。手動入力することで継続できます。')
+                    setErrorMessage(t('notFound'))
+                    setSuggestFailed(true)
                 }
             })
+            .catch((e) => {
+                console.log(e)
+
+                if (!legacySearched) {
+                    // try legacy
+                    console.log('try legacy')
+
+                    const normalized = secret.trim().normalize('NFKD')
+                    console.log(normalized)
+                    const wallet = HDNodeWallet.fromPhrase(normalized, undefined, undefined, LangJa.wordlist())
+                    setMnemonic(normalized)
+                    setPrivatekey(wallet.privateKey.slice(2))
+
+                    setLegacySearched(true)
+                    return
+                }
+
+                setErrorMessage(t('notFound'))
+                setSuggestFailed(true)
+            })
+    }, [privatekey])
+
+    useEffect(() => {
+        setServer('')
+        setErrorMessage('')
+        setEntityFound(false)
+        if (secret.length === 0) return
+
+        // try to parse as private key
+        if (IsValid256k1PrivateKey(secret)) {
+            const key = LoadKey(secret)
+            if (!key) return
+            setPrivatekey(key.privatekey)
+            return
+        }
+
+        const normalized = secret.trim().normalize('NFKD')
+        const split = normalized.split(' ')
+        console.log(split)
+        if (split.length !== 12) return
+
+        // try to parse as mnemonic
+        try {
+            if (normalized[0].match(/[a-z]/)) {
+                console.log('english')
+                const wallet = HDNodeWallet.fromPhrase(normalized)
+                setMnemonic(normalized)
+                setPrivatekey(wallet.privateKey.slice(2))
+            } else {
+                console.log('japanese')
+                const ja2en = split
+                    .map((word) => {
+                        const wordIndex = LangJa.wordlist().getWordIndex(word)
+                        return LangEn.wordlist().getWord(wordIndex)
+                    })
+                    .join(' ')
+                const wallet = HDNodeWallet.fromPhrase(ja2en)
+                setMnemonic(normalized)
+                setPrivatekey(wallet.privateKey.slice(2))
+            }
         } catch (e) {
             console.log(e)
         }
-    }, [mnemonic, secret])
+
+        setErrorMessage(t('invalidSecret'))
+    }, [secret])
 
     useEffect(() => {
         let unmounted = false
@@ -101,7 +154,7 @@ export function AccountImport(): JSX.Element {
                             if (unmounted) return
                             console.log(entity)
                             if (!entity || entity.ccid !== client.ccid) {
-                                setErrorMessage('指定のサーバーにあなたのアカウントは見つかりませんでした。')
+                                setErrorMessage(t('notFoundOnServer'))
                                 return
                             }
                             setErrorMessage('')
@@ -110,13 +163,13 @@ export function AccountImport(): JSX.Element {
                         })
                         .catch((_) => {
                             if (unmounted) return
-                            setErrorMessage('指定のサーバーにあなたのアカウントは見つかりませんでした。')
+                            setErrorMessage(t('notFoundOnServer'))
                         })
                     console.log(fqdn)
                 })
                 .catch((_) => {
                     if (unmounted) return
-                    setErrorMessage('指定のサーバーに接続できませんでした。')
+                    setErrorMessage(t('connectError'))
                 })
         } catch (e) {
             console.log(e)
@@ -158,6 +211,7 @@ export function AccountImport(): JSX.Element {
             >
                 <Button
                     disableRipple
+                    variant="text"
                     sx={{
                         display: 'flex',
                         justifyContent: 'center',
@@ -182,54 +236,73 @@ export function AccountImport(): JSX.Element {
                         gap: '20px'
                     }}
                 >
-                    <Typography variant="h3">シークレットコードから</Typography>
+                    <Typography variant="h3">{t('input')}</Typography>
                     <TextField
-                        placeholder="12個の単語からなる呪文"
-                        value={mnemonic}
-                        onChange={(e) => {
-                            setMnemonic(e.target.value)
-                        }}
-                    />
-                    <Box>
-                        <Divider>または</Divider>
-                    </Box>
-                    <Typography variant="h3">秘密鍵を直接入力</Typography>
-                    <TextField
-                        placeholder="0x..."
+                        type={showSecret ? 'text' : 'password'}
+                        placeholder={t('secretPlaceholder')}
                         value={secret}
                         onChange={(e) => {
                             setSecret(e.target.value)
                         }}
-                    />
-                    <Divider sx={{ my: '30px' }} />
-                    <Typography variant="h3">ドメイン</Typography>
-                    <TextField
-                        placeholder="https://example.tld/"
-                        value={server}
-                        onChange={(e) => {
-                            setServer(e.target.value)
+                        disabled={!!privatekey}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => {
+                                            setShowSecret(!showSecret)
+                                        }}
+                                        color="primary"
+                                    >
+                                        {privatekey ? (
+                                            <CheckCircleIcon />
+                                        ) : showSecret ? (
+                                            <VisibilityOff />
+                                        ) : (
+                                            <Visibility />
+                                        )}
+                                    </IconButton>
+                                </InputAdornment>
+                            )
                         }}
                     />
+                    {ccid && (
+                        <Typography sx={{ wordBreak: 'break-all' }}>
+                            {t('welcome')}: {ccid}
+                        </Typography>
+                    )}
+                    {suggestFailed && (
+                        <>
+                            <Divider sx={{ my: '30px' }} />
+                            <Typography variant="h3">{t('ドメイン')}</Typography>
+                            <TextField
+                                placeholder="https://example.tld/"
+                                value={server}
+                                onChange={(e) => {
+                                    setServer(e.target.value)
+                                }}
+                            />
+                        </>
+                    )}
                     {errorMessage}
-                    <Button disabled={!entityFound} variant="contained" onClick={accountImport}>
-                        インポート
+                    <Button disabled={!entityFound} onClick={accountImport}>
+                        {t('import')}
                     </Button>
-                    <Box sx={{ flexGrow: 1 }} />
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            justifyContent: 'flex-end',
-                            gap: '10px',
-                            alignItems: 'center'
-                        }}
-                    >
-                        <Typography>まだアカウントを作ってない？</Typography>
-                        <Button variant="contained" component={Link} to="/register">
-                            アカウントを作成
-                        </Button>
-                    </Box>
                 </Paper>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'flex-end',
+                        gap: '10px',
+                        alignItems: 'center'
+                    }}
+                >
+                    <Typography color="background.contrastText">{t('noAccount')}</Typography>
+                    <Button component={Link} to="/register">
+                        {t('createAccount')}
+                    </Button>
+                </Box>
             </Box>
         </ThemeProvider>
     )

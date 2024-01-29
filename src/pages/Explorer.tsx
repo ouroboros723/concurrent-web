@@ -1,8 +1,9 @@
 import { Box, Button, Checkbox, Divider, IconButton, Paper, TextField, Typography, useTheme } from '@mui/material'
-import { type Commonstream, Schemas } from '@concurrent-world/client'
+import { type CommonstreamSchema, Schemas } from '@concurrent-world/client'
 import { useApi } from '../context/api'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import Fuzzysort from 'fuzzysort'
 
@@ -17,6 +18,7 @@ import { type StreamWithDomain } from '../model'
 import { StreamCard } from '../components/Stream/Card'
 
 export function Explorer(): JSX.Element {
+    const { t } = useTranslation('', { keyPrefix: 'pages.explore' })
     const client = useApi()
     const theme = useTheme()
     const navigate = useNavigate()
@@ -48,7 +50,7 @@ export function Explorer(): JSX.Element {
         }
         Promise.all(
             selectedDomains.map(async (e) => {
-                const streams = await client.getCommonStreams(e)
+                const streams = await client.getStreamsBySchema<CommonstreamSchema>(e, Schemas.commonstream)
                 return streams.map((stream) => {
                     return {
                         domain: e,
@@ -63,7 +65,7 @@ export function Explorer(): JSX.Element {
         })
     }, [selectedDomains])
 
-    const createNewStream = (stream: Commonstream): void => {
+    const createNewStream = (stream: any): void => {
         client.api
             .createStream(Schemas.commonstream, stream)
             .then((e: any) => {
@@ -108,7 +110,7 @@ export function Explorer(): JSX.Element {
             }}
         >
             <Typography variant="h2" gutterBottom>
-                Explorer
+                {t('title')}
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Box
@@ -121,7 +123,7 @@ export function Explorer(): JSX.Element {
                 }}
             >
                 <Typography variant="h3" gutterBottom>
-                    Domains
+                    {t('domains')}
                 </Typography>
                 <Box>
                     <IconButton
@@ -188,15 +190,14 @@ export function Explorer(): JSX.Element {
                 }}
             >
                 <Typography variant="h3" gutterBottom>
-                    ストリーム
+                    {t('streams')}
                 </Typography>
                 <Button
-                    variant="contained"
                     onClick={() => {
                         setDrawerOpen(true)
                     }}
                 >
-                    新しく作る
+                    {t('createNew')}
                 </Button>
             </Box>
             <TextField
@@ -218,7 +219,11 @@ export function Explorer(): JSX.Element {
                     return (
                         <StreamCard
                             key={value.stream.id}
-                            stream={value}
+                            streamID={value.stream.id}
+                            name={value.stream.payload.name}
+                            description={value.stream.payload.description}
+                            banner={value.stream.payload.banner ?? ''}
+                            domain={value.domain}
                             isOwner={value.stream.author === client.ccid}
                         />
                     )
@@ -232,10 +237,12 @@ export function Explorer(): JSX.Element {
             >
                 <Box p={1}>
                     <Typography variant="h3" gutterBottom>
-                        ストリーム新規作成
+                        {t('createNewStream.title')}
                     </Typography>
                     <Typography variant="body1" gutterBottom>
-                        あなたの管轄ドメイン{client.api.host}に新しいストリームを作成します。
+                        {t('createNewStream.desc1')}
+                        {client.api.host}
+                        {t('createNewStream.desc2')}
                     </Typography>
                     <Divider />
                     <CCEditor schemaURL={Schemas.commonstream} onSubmit={createNewStream} />

@@ -1,7 +1,7 @@
 import { Box, Button, alpha, useTheme } from '@mui/material'
 
 import HomeIcon from '@mui/icons-material/Home'
-import MessageIcon from '@mui/icons-material/Message'
+import ContactsIcon from '@mui/icons-material/Contacts'
 import ExploreIcon from '@mui/icons-material/Explore'
 import CreateIcon from '@mui/icons-material/Create'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -26,6 +26,7 @@ export const MobileMenu = (): JSX.Element => {
         >
             <Button
                 disableRipple
+                variant="text"
                 onClick={() => {
                     actions.openMobileMenu()
                 }}
@@ -44,19 +45,35 @@ export const MobileMenu = (): JSX.Element => {
                     }}
                 />
             </Button>
-            <Button sx={{ color: 'background.contrastText', width: 1 }} component={NavLink} to="/">
+            <Button variant="text" sx={{ color: 'background.contrastText', width: 1 }} component={NavLink} to="/">
                 <HomeIcon />
             </Button>
-            <Button sx={{ color: 'background.contrastText', width: 1 }} component={NavLink} to="/notifications">
+            <Button
+                variant="text"
+                sx={{ color: 'background.contrastText', width: 1 }}
+                component={NavLink}
+                to="/notifications"
+            >
                 <NotificationsIcon />
             </Button>
-            <Button sx={{ color: 'background.contrastText', width: 1 }} component={NavLink} to="/associations">
-                <MessageIcon />
+            <Button
+                variant="text"
+                sx={{ color: 'background.contrastText', width: 1 }}
+                component={NavLink}
+                to="/contacts"
+            >
+                <ContactsIcon />
             </Button>
-            <Button sx={{ color: 'background.contrastText', width: 1 }} component={NavLink} to="/explorer">
+            <Button
+                variant="text"
+                sx={{ color: 'background.contrastText', width: 1 }}
+                component={NavLink}
+                to="/explorer"
+            >
                 <ExploreIcon />
             </Button>
             <Button
+                variant="text"
                 sx={{
                     height: 36,
                     my: 'auto',

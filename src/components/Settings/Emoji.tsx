@@ -9,14 +9,18 @@ import CancelIcon from '@mui/icons-material/Cancel'
 import { useSnackbar } from 'notistack'
 import { useLocation } from 'react-router-dom'
 
+import { useTranslation } from 'react-i18next'
+
 export const EmojiSettings = (): JSX.Element => {
-    const pref = usePreference()
+    const [emojiPackages, setEmojiPackages] = usePreference('emojiPackages')
     const path = useLocation()
     const { enqueueSnackbar } = useSnackbar()
 
     const [addingPackageURL, setAddingPackageURL] = useState<string>('')
     const [packages, setPackages] = useState<EmojiPackage[]>([])
     const [preview, setPreview] = useState<EmojiPackage | null>(null)
+
+    const { t } = useTranslation('', { keyPrefix: 'settings.emoji' })
 
     useEffect(() => {
         const emojiURL = path.hash.slice(1)
@@ -27,7 +31,7 @@ export const EmojiSettings = (): JSX.Element => {
 
     useEffect(() => {
         Promise.all(
-            pref.emojiPackages.map((url) =>
+            emojiPackages.map((url) =>
                 fetch(url)
                     .then((j) => j.json())
                     .then((p: RawEmojiPackage) => ({ ...p, packageURL: url }))
@@ -35,7 +39,7 @@ export const EmojiSettings = (): JSX.Element => {
         ).then((packages: EmojiPackage[]) => {
             setPackages(packages)
         })
-    }, [pref.emojiPackages])
+    }, [emojiPackages])
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -47,7 +51,7 @@ export const EmojiSettings = (): JSX.Element => {
                     })
                     .catch(() => {
                         setPreview(null)
-                        enqueueSnackbar('パッケージが見つかりませんでした', { variant: 'error' })
+                        enqueueSnackbar(t('packageNotFound'), { variant: 'error' })
                     })
             } else {
                 setPreview(null)
@@ -60,7 +64,7 @@ export const EmojiSettings = (): JSX.Element => {
 
     return (
         <>
-            <Typography variant="h3">絵文字パッケージ</Typography>
+            <Typography variant="h3">{t('emojiPackage')}</Typography>
             <Box
                 sx={{
                     display: 'grid',
@@ -85,7 +89,7 @@ export const EmojiSettings = (): JSX.Element => {
                             }}
                             onClick={() => {
                                 navigator.clipboard.writeText(e.packageURL)
-                                enqueueSnackbar('コピーしました', { variant: 'success' })
+                                enqueueSnackbar(t('copied'), { variant: 'success' })
                             }}
                         >
                             <Box display="flex">
@@ -96,7 +100,7 @@ export const EmojiSettings = (): JSX.Element => {
                             </Typography>
                             <IconButton
                                 onClick={() => {
-                                    pref.setEmojiPackages(pref.emojiPackages.filter((p) => p !== e.packageURL))
+                                    setEmojiPackages(emojiPackages.filter((p) => p !== e.packageURL))
                                 }}
                                 sx={{
                                     position: 'absolute',
@@ -132,11 +136,11 @@ export const EmojiSettings = (): JSX.Element => {
                     <IconButton
                         onClick={() => {
                             if (!packages.find((p) => p.packageURL === preview.packageURL)) {
-                                pref.setEmojiPackages([...pref.emojiPackages, addingPackageURL])
+                                setEmojiPackages([...emojiPackages, addingPackageURL])
                                 setAddingPackageURL('')
                                 setPreview(null)
                             } else {
-                                enqueueSnackbar('すでに追加されています', { variant: 'error' })
+                                enqueueSnackbar(t('alreadyAdded'), { variant: 'error' })
                             }
                         }}
                     >
@@ -146,7 +150,7 @@ export const EmojiSettings = (): JSX.Element => {
             )}
 
             <TextField
-                label="絵文字パッケージURL"
+                label={t('emojiPackageURL')}
                 placeholder="https://example.com/emoji.zip"
                 value={addingPackageURL}
                 onChange={(e) => {

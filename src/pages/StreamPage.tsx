@@ -1,7 +1,5 @@
 import { memo, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Divider } from '@mui/material'
-import type { StreamElementDated } from '../model'
-import type { IuseObjectList } from '../hooks/useObjectList'
 import { Draft } from '../components/Draft'
 import { useLocation } from 'react-router-dom'
 import { TimelineHeader } from '../components/TimelineHeader'
@@ -10,33 +8,31 @@ import { Timeline } from '../components/Timeline/main'
 import { StreamInfo } from '../components/StreamInfo'
 import { ApplicationContext } from '../App'
 import { usePreference } from '../context/PreferenceContext'
-import { type Stream } from '@concurrent-world/client'
+import { type CommonstreamSchema, type Stream } from '@concurrent-world/client'
 import PercentIcon from '@mui/icons-material/Percent'
 import InfoIcon from '@mui/icons-material/Info'
 import { CCDrawer } from '../components/ui/CCDrawer'
 import WatchingStreamContextProvider from '../context/WatchingStreamContext'
+import { type VListHandle } from 'virtua'
 
-export interface StreamPageProps {
-    messages: IuseObjectList<StreamElementDated>
-}
-
-export const StreamPage = memo<StreamPageProps>((props: StreamPageProps): JSX.Element => {
+export const StreamPage = memo((): JSX.Element => {
     const client = useApi()
     const appData = useContext(ApplicationContext)
-    const pref = usePreference()
+
+    const [showEditorOnTop] = usePreference('showEditorOnTop')
+    const [showEditorOnTopMobile] = usePreference('showEditorOnTopMobile')
 
     const reactlocation = useLocation()
-    const scrollParentRef = useRef<HTMLDivElement>(null)
-
+    const timelineRef = useRef<VListHandle>(null)
     const [writeable, setWriteable] = useState<boolean>(true)
 
     const targetStreamID = reactlocation.hash.replace('#', '').split(',')[0]
-    const [targetStream, setTargetStream] = useState<Stream | null | undefined>(null)
+    const [targetStream, setTargetStream] = useState<Stream<CommonstreamSchema> | null | undefined>(null)
 
     const [streamInfoOpen, setStreamInfoOpen] = useState<boolean>(false)
 
     useEffect(() => {
-        client.getStream(targetStreamID).then((stream) => {
+        client.getStream<CommonstreamSchema>(targetStreamID).then((stream) => {
             setTargetStream(stream)
         })
 
@@ -53,9 +49,7 @@ export const StreamPage = memo<StreamPageProps>((props: StreamPageProps): JSX.El
                     setWriteable(true)
                 }
             })
-            .finally(() => {
-                scrollParentRef.current?.scroll({ top: 0 })
-            })
+            .finally(() => {})
     }, [reactlocation.hash])
 
     const streams = useMemo(() => {
@@ -78,77 +72,63 @@ export const StreamPage = memo<StreamPageProps>((props: StreamPageProps): JSX.El
                 }}
             >
                 <TimelineHeader
-                    title={targetStream?.name ?? 'Not Found'}
+                    title={targetStream?.payload.name ?? 'Not Found'}
                     titleIcon={<PercentIcon />}
                     secondaryAction={<InfoIcon />}
                     onTitleClick={() => {
-                        scrollParentRef.current?.scroll({ top: 0, behavior: 'smooth' })
+                        timelineRef.current?.scrollToIndex(0, { align: 'start', smooth: true })
                     }}
                     onSecondaryActionClick={() => {
                         setStreamInfoOpen(true)
                     }}
                 />
-                <Box
-                    sx={{
-                        overflowX: 'hidden',
-                        overflowY: 'auto',
-                        overscrollBehaviorY: 'none'
-                    }}
-                    ref={scrollParentRef}
-                >
-                    {writeable && (
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                flexDirection: 'column'
-                            }}
-                        >
-                            <Box
-                                sx={{
-                                    padding: { xs: '8px', sm: '8px 16px' },
-                                    display: {
-                                        xs: pref.showEditorOnTopMobile ? 'block' : 'none',
-                                        sm: pref.showEditorOnTop ? 'block' : 'none'
-                                    }
-                                }}
-                            >
-                                <Draft
-                                    streamPickerInitial={streams}
-                                    streamPickerOptions={streams}
-                                    onSubmit={(text: string, destinations: string[], emojis): Promise<Error | null> => {
-                                        client
-                                            .createCurrent(text, destinations, emojis)
-                                            .then(() => {
-                                                return null
-                                            })
-                                            .catch((e) => {
-                                                return e
-                                            })
-                                        return Promise.resolve(null)
+                <WatchingStreamContextProvider watchingStreams={streamIDs}>
+                    <Timeline
+                        streams={appData.displayingStream}
+                        ref={timelineRef}
+                        header={
+                            (writeable && (
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column'
                                     }}
-                                />
-                            </Box>
-                            <Divider />
-                        </Box>
-                    )}
-                    <WatchingStreamContextProvider watchingStreams={streamIDs}>
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                flex: 1,
-                                flexDirection: 'column',
-                                py: { xs: 1, sm: 1 },
-                                px: { xs: 1, sm: 2 }
-                            }}
-                        >
-                            <Timeline
-                                streams={appData.displayingStream}
-                                timeline={props.messages}
-                                scrollParentRef={scrollParentRef}
-                            />
-                        </Box>
-                    </WatchingStreamContextProvider>
-                </Box>
+                                >
+                                    <Box
+                                        sx={{
+                                            display: {
+                                                xs: showEditorOnTopMobile ? 'block' : 'none',
+                                                sm: showEditorOnTop ? 'block' : 'none'
+                                            }
+                                        }}
+                                    >
+                                        <Draft
+                                            streamPickerInitial={streams}
+                                            streamPickerOptions={streams}
+                                            onSubmit={async (
+                                                text: string,
+                                                destinations: string[],
+                                                options
+                                            ): Promise<Error | null> => {
+                                                await client.createCurrent(text, destinations, options).catch((e) => e)
+                                                return null
+                                            }}
+                                            sx={{
+                                                p: 1
+                                            }}
+                                        />
+                                        <Divider
+                                            sx={{
+                                                mb: 1
+                                            }}
+                                        />
+                                    </Box>
+                                </Box>
+                            )) ||
+                            undefined
+                        }
+                    />
+                </WatchingStreamContextProvider>
             </Box>
             <CCDrawer
                 open={streamInfoOpen}

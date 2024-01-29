@@ -1,22 +1,47 @@
-import { Box, Button, Divider, FormControlLabel, FormGroup, IconButton, Switch, Typography } from '@mui/material'
+import {
+    Box,
+    Button,
+    Divider,
+    FormControlLabel,
+    FormGroup,
+    IconButton,
+    Link,
+    MenuItem,
+    Select,
+    Switch,
+    Typography
+} from '@mui/material'
 import { usePreference } from '../../context/PreferenceContext'
 import { Passport } from '../../components/theming/Passport'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import Tilt from 'react-parallax-tilt'
 import { useApi } from '../../context/api'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSnackbar } from 'notistack'
 import { IssueJWT } from '@concurrent-world/client'
+import { useTranslation, Trans } from 'react-i18next'
+import { Link as NavLink } from 'react-router-dom'
 
 export const GeneralSettings = (): JSX.Element => {
-    const pref = usePreference()
     const client = useApi()
     const [showPrivateKey, setShowPrivateKey] = useState(false)
     const [invitationCode, setInvitationCode] = useState<string>('')
 
+    const [showEditorOnTop, setShowEditorOnTop] = usePreference('showEditorOnTop')
+    const [showEditorOnTopMobile, setShowEditorOnTopMobile] = usePreference('showEditorOnTopMobile')
+    const [devMode, setDevMode] = usePreference('devMode')
+
     const tags = client?.api?.getTokenClaims()?.tag?.split(',') ?? []
     const { enqueueSnackbar } = useSnackbar()
+
+    const [currentLanguage, setCurrentLanguage] = useState<string>('')
+
+    const { t, i18n } = useTranslation('', { keyPrefix: 'settings.general' })
+
+    useEffect(() => {
+        setCurrentLanguage(i18n.language)
+    }, [])
 
     return (
         <Box
@@ -35,106 +60,135 @@ export const GeneralSettings = (): JSX.Element => {
                     <Passport />
                 </Tilt>
             </Box>
+
+            <Typography>
+                <Trans
+                    i18nKey={t('checkSecret')}
+                    components={{ l: <Link component={NavLink} to="/settings/profile" /> }}
+                />
+            </Typography>
+
             <Divider />
 
             <Box>
-                <Typography variant="h3">基本</Typography>
+                <Typography variant="h3">{t('language')}</Typography>
+                <Select
+                    value={currentLanguage}
+                    onChange={(e) => {
+                        i18n.changeLanguage(e.target.value)
+                        setCurrentLanguage(e.target.value)
+                    }}
+                >
+                    <MenuItem value={'en'}>English</MenuItem>
+                    <MenuItem value={'ja'}>日本語</MenuItem>
+                    <MenuItem value={'kr'}>한국어 (translated by @Alternative)</MenuItem>
+                </Select>
+            </Box>
+            <Box>
+                <Typography variant="h3">{t('basic')}</Typography>
                 <FormGroup>
                     <FormControlLabel
                         control={
                             <Switch
-                                checked={pref.showEditorOnTop}
+                                checked={showEditorOnTop}
                                 onChange={(e) => {
-                                    pref.setShowEditorOnTop(e.target.checked)
+                                    setShowEditorOnTop(e.target.checked)
                                 }}
                             />
                         }
-                        label="投稿エディタを上部に表示"
+                        label={t('showEditorOnTop')}
                     />
                     <FormControlLabel
                         control={
                             <Switch
-                                checked={pref.showEditorOnTopMobile}
+                                checked={showEditorOnTopMobile}
                                 onChange={(e) => {
-                                    pref.setShowEditorOnTopMobile(e.target.checked)
+                                    setShowEditorOnTopMobile(e.target.checked)
                                 }}
                             />
                         }
-                        label="投稿エディタを上部に表示 (モバイル)"
+                        label={t('showEditorOnTopMobile')}
                     />
                     <FormControlLabel
                         control={
                             <Switch
-                                checked={pref.devMode}
+                                checked={devMode}
                                 onChange={(e) => {
-                                    pref.setDevMode(e.target.checked)
+                                    setDevMode(e.target.checked)
                                 }}
                             />
                         }
-                        label="開発者モード"
+                        label={t('developerMode')}
                     />
                 </FormGroup>
             </Box>
-
             <Divider />
 
-            <Typography variant="h3" gutterBottom>
-                CCID
-            </Typography>
-            <Typography>{client.ccid}</Typography>
+            {devMode && (
+                <>
+                    <Typography variant="h3" gutterBottom>
+                        CCID
+                    </Typography>
+                    <Typography>{client.ccid}</Typography>
 
-            <Typography variant="h3" gutterBottom>
-                Host
-            </Typography>
-            <Typography>{client.api.host}</Typography>
+                    <Typography variant="h3" gutterBottom>
+                        Host
+                    </Typography>
+                    <Typography>{client.api.host}</Typography>
 
-            <Typography variant="h3" gutterBottom>
-                Privatekey
-            </Typography>
-            <Typography
-                sx={{
-                    wordBreak: 'break-all',
-                    display: 'flex',
-                    alignItems: 'center'
-                }}
-            >
-                {showPrivateKey ? client.api.privatekey : '•••••••••••••••••••••••••••••••••••••••••••••••••'}
-                <IconButton
-                    sx={{ ml: 'auto' }}
-                    onClick={() => {
-                        setShowPrivateKey(!showPrivateKey)
-                    }}
-                >
-                    {!showPrivateKey ? (
-                        <VisibilityIcon sx={{ color: 'text.primary' }} />
-                    ) : (
-                        <VisibilityOffIcon sx={{ color: 'text.primary' }} />
-                    )}
-                </IconButton>
-            </Typography>
+                    <Typography variant="h3" gutterBottom>
+                        Privatekey
+                    </Typography>
+                    <Typography
+                        sx={{
+                            wordBreak: 'break-all',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}
+                    >
+                        {showPrivateKey ? client.api.privatekey : '•••••••••••••••••••••••••••••••••••••••••••••••••'}
+                        <IconButton
+                            sx={{ ml: 'auto' }}
+                            onClick={() => {
+                                setShowPrivateKey(!showPrivateKey)
+                            }}
+                        >
+                            {!showPrivateKey ? (
+                                <VisibilityIcon sx={{ color: 'text.primary' }} />
+                            ) : (
+                                <VisibilityOffIcon sx={{ color: 'text.primary' }} />
+                            )}
+                        </IconButton>
+                    </Typography>
 
-            <Typography variant="h3" gutterBottom>
-                HomeStream
-            </Typography>
-            <Typography gutterBottom>{client.user?.userstreams?.homeStream}</Typography>
+                    <Typography variant="h3" gutterBottom>
+                        HomeStream
+                    </Typography>
+                    <Typography gutterBottom>{client.user?.userstreams?.payload.body.homeStream}</Typography>
 
-            <Typography variant="h3" gutterBottom>
-                NotificationStream
-            </Typography>
-            <Typography gutterBottom>{client.user?.userstreams?.notificationStream}</Typography>
+                    <Typography variant="h3" gutterBottom>
+                        NotificationStream
+                    </Typography>
+                    <Typography gutterBottom>{client.user?.userstreams?.payload.body.notificationStream}</Typography>
 
-            <Typography variant="h3" gutterBottom>
-                AssociationStream
-            </Typography>
-            <Typography gutterBottom>{client.user?.userstreams?.associationStream}</Typography>
+                    <Typography variant="h3" gutterBottom>
+                        AssociationStream
+                    </Typography>
+                    <Typography gutterBottom>{client.user?.userstreams?.payload.body.associationStream}</Typography>
 
-            <Divider />
+                    <Divider />
+                    <Typography variant="h3" gutterBottom>
+                        Services
+                    </Typography>
+
+                    <Typography>{JSON.stringify(client.domainServices)}</Typography>
+                </>
+            )}
 
             {tags.includes('_invite') && (
                 <>
                     {invitationCode === '' ? (
                         <Button
-                            variant="contained"
                             onClick={(_) => {
                                 if (client.api.host === undefined) {
                                     return
@@ -148,11 +202,11 @@ export const GeneralSettings = (): JSX.Element => {
                                 setInvitationCode(jwt)
                             }}
                         >
-                            招待コードを生成
+                            {t('generateInviteCode')}
                         </Button>
                     ) : (
                         <>
-                            <Typography variant="body1">招待コード(24時間有効)</Typography>
+                            <Typography variant="body1">{t('inviteCode')}</Typography>
                             <pre
                                 style={{
                                     whiteSpace: 'pre-wrap',
@@ -166,13 +220,12 @@ export const GeneralSettings = (): JSX.Element => {
                                 {invitationCode}
                             </pre>
                             <Button
-                                variant="contained"
                                 onClick={(_) => {
                                     navigator.clipboard.writeText(invitationCode)
-                                    enqueueSnackbar('コピーしました', { variant: 'success' })
+                                    enqueueSnackbar(t('copied'), { variant: 'success' })
                                 }}
                             >
-                                招待コードをコピー
+                                {t('copyInviteCode')}
                             </Button>
                         </>
                     )}

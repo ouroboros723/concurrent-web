@@ -1,34 +1,56 @@
-import { Box, Chip } from '@mui/material'
+import { Box } from '@mui/material'
+import ReplyIcon from '@mui/icons-material/Reply'
 
-import { type M_Reply, type M_Current } from '@concurrent-world/client'
+import {
+    type RerouteMessageSchema,
+    type Message,
+    type ReplyMessageSchema,
+    type SimpleNoteSchema
+} from '@concurrent-world/client'
 import { useApi } from '../../context/api'
 import { MessageView } from './MessageView'
 import { OneLineMessageView } from './OneLineMessageView'
+import { useEffect, useState } from 'react'
+import { CCUserChip } from '../ui/CCUserChip'
 
 export interface ReplyMessageFrameProp {
-    message: M_Reply
-    reloadMessage: () => void
+    message: Message<ReplyMessageSchema>
     lastUpdated?: number
     userCCID: string
+    rerouted?: Message<RerouteMessageSchema>
+    simple?: boolean
 }
 
 export const ReplyMessageFrame = (props: ReplyMessageFrameProp): JSX.Element => {
     const client = useApi()
 
+    const [replyTo, setReplyTo] = useState<Message<SimpleNoteSchema | ReplyMessageSchema> | null>()
+
+    useEffect(() => {
+        if (props.message) {
+            props.message.getReplyTo().then((msg) => {
+                setReplyTo(msg)
+            })
+        }
+    }, [props.message])
+
     return (
         <>
-            {props.message.replyTarget && <OneLineMessageView message={props.message.replyTarget as M_Current} />}
+            {replyTo && <OneLineMessageView message={replyTo} />}
             <Box>
                 <MessageView
+                    simple={props.simple}
                     userCCID={client.ccid}
                     message={props.message}
                     beforeMessage={
-                        <Chip
-                            label={`@${props.message.replyTarget.author.profile?.username || 'anonymous'}`}
-                            size="small"
-                            sx={{ width: 'fit-content', mb: 1 }}
-                        />
+                        <Box>
+                            <CCUserChip
+                                iconOverride={<ReplyIcon fontSize="small" />}
+                                ccid={props.message.payload.body.replyToMessageAuthor}
+                            />
+                        </Box>
                     }
+                    rerouted={props.rerouted}
                 />
             </Box>
         </>

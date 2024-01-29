@@ -1,148 +1,123 @@
-import { Box, IconButton, ListItem, Typography, Chip, Paper, Tooltip } from '@mui/material'
-import { Link as routerLink } from 'react-router-dom'
-import { useApi } from '../../context/api'
-import { CCAvatar } from '../ui/CCAvatar'
-import type { M_Current, M_Reply } from '@concurrent-world/client'
+import { Box, Button, alpha, useTheme } from '@mui/material'
 import { SimpleNote } from './SimpleNote'
 import { MessageHeader } from './MessageHeader'
 import { MessageActions } from './MessageActions'
 import { MessageReactions } from './MessageReactions'
-import { useSnackbar } from 'notistack'
-import { FollowButton } from '../FollowButton'
-import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import { MessageUrlPreview } from './MessageUrlPreview'
+import {
+    type RerouteMessageSchema,
+    type Message,
+    type ReplyMessageSchema,
+    type SimpleNoteSchema,
+    Schemas
+} from '@concurrent-world/client'
+import { PostedStreams } from './PostedStreams'
+import { ContentWithCCAvatar } from '../ContentWithCCAvatar'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import ReplayIcon from '@mui/icons-material/Replay'
+import { useMemo, useState } from 'react'
 
 export interface MessageViewProps {
-    message: M_Current | M_Reply
+    message: Message<SimpleNoteSchema | ReplyMessageSchema>
+    rerouted?: Message<RerouteMessageSchema>
     userCCID: string
     beforeMessage?: JSX.Element
     lastUpdated?: number
+    forceExpanded?: boolean
+    clipHeight?: number
+    simple?: boolean
 }
 
+const gradationHeight = 80
+
 export const MessageView = (props: MessageViewProps): JSX.Element => {
-    const client = useApi()
-    const { enqueueSnackbar } = useSnackbar()
-    const isSelf = props.message.author.ccid === client?.ccid
+    const theme = useTheme()
+    const clipHeight = props.clipHeight ?? 450
+    const [expanded, setExpanded] = useState(props.forceExpanded ?? false)
+
+    const reroutedsame = useMemo(() => {
+        if (!props.rerouted) return false
+        const A = props.rerouted.postedStreams?.filter((stream) => stream.schema === Schemas.commonstream) ?? []
+        const B = props.message.postedStreams?.filter((stream) => stream.schema === Schemas.commonstream) ?? []
+        if (A.length !== B.length) return false
+        const Aids = A.map((e) => e.id).sort()
+        const Bids = B.map((e) => e.id).sort()
+        return Aids.every((v, i) => v === Bids[i])
+    }, [props.rerouted, props.message])
 
     return (
-        <ListItem
-            sx={{
-                wordBreak: 'break-word',
-                alignItems: 'flex-start',
-                flex: 1,
-                gap: { xs: 1, sm: 2 }
-            }}
-            disablePadding
+        <ContentWithCCAvatar
+            author={props.message.authorUser}
+            profileOverride={props.message.payload.body.profileOverride}
         >
-            {props.message && (
-                <>
-                    <Tooltip
-                        enterDelay={500}
-                        enterNextDelay={500}
-                        leaveDelay={300}
-                        placement="top"
-                        components={{
-                            Tooltip: Paper
+            <MessageHeader message={props.message} />
+            {props.beforeMessage}
+            <Box
+                sx={{
+                    position: 'relative',
+                    maxHeight: expanded ? 'none' : `${clipHeight}px`,
+                    overflow: 'hidden'
+                }}
+            >
+                <Box
+                    sx={{
+                        display: expanded ? 'none' : 'flex',
+                        position: 'absolute',
+                        top: `${clipHeight - gradationHeight}px`,
+                        left: '0',
+                        width: '100%',
+                        height: `${gradationHeight}px`,
+                        background: `linear-gradient(${alpha(theme.palette.background.paper, 0)}, ${
+                            theme.palette.background.paper
+                        })`,
+                        alignItems: 'center',
+                        zIndex: 1,
+                        justifyContent: 'center'
+                    }}
+                >
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={() => {
+                            setExpanded(true)
                         }}
-                        componentsProps={{
-                            tooltip: {
-                                sx: {
-                                    p: 1,
-                                    m: 1,
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                    minWidth: '300px'
-                                }
-                            }
-                        }}
-                        title={
-                            <Box display="flex" flexDirection="column" alignItems="left" sx={{ m: 1 }} gap={1}>
-                                <Box
-                                    display="flex"
-                                    flexDirection="row"
-                                    alignItems="center"
-                                    justifyContent="space-between"
-                                >
-                                    <CCAvatar
-                                        alt={props.message.author.profile?.username}
-                                        avatarURL={props.message.author.profile?.avatar}
-                                        identiconSource={props.message.author.ccid}
-                                        sx={{
-                                            width: { xs: '38px', sm: '48px' },
-                                            height: { xs: '38px', sm: '48px' }
-                                        }}
-                                    />
-                                    {!isSelf && (
-                                        <FollowButton
-                                            userCCID={props.message.author.ccid}
-                                            userStreamID={props.message.author.userstreams?.homeStream ?? ''}
-                                            color="primary.main"
-                                        />
-                                    )}
-                                </Box>
-                                <Box
-                                    display="flex"
-                                    flexDirection="row"
-                                    alignItems="center"
-                                    gap={1}
-                                    justifyContent="space-between"
-                                >
-                                    <Typography variant="h2">{props.message.author.profile?.username}</Typography>
-                                    <Chip
-                                        size="small"
-                                        label={`${props.message.author.ccid.slice(0, 9)}...`}
-                                        deleteIcon={<ContentPasteIcon />}
-                                        onDelete={() => {
-                                            navigator.clipboard.writeText(props.message.author.ccid)
-                                            enqueueSnackbar('Copied', { variant: 'info' })
-                                        }}
-                                    />
-                                </Box>
-                                <Typography variant="body1">{props.message.author.profile?.description}</Typography>
-                            </Box>
-                        }
                     >
-                        <IconButton
-                            sx={{
-                                width: { xs: '38px', sm: '48px' },
-                                height: { xs: '38px', sm: '48px' },
-                                mt: { xs: '3px', sm: '5px' }
-                            }}
-                            component={routerLink}
-                            to={props.message.profileOverride?.link ?? '/entity/' + props.message.author.ccid}
-                            target={props.message.profileOverride?.link ? '_blank' : undefined}
-                            rel={props.message.profileOverride?.link ? 'noopener noreferrer' : undefined}
-                        >
-                            <CCAvatar
-                                alt={props.message.author.profile?.username}
-                                avatarURL={props.message.author.profile?.avatar}
-                                avatarOverride={props.message.profileOverride?.avatar}
-                                identiconSource={props.message.author.ccid}
-                                sx={{
-                                    width: { xs: '38px', sm: '48px' },
-                                    height: { xs: '38px', sm: '48px' }
-                                }}
-                            />
-                        </IconButton>
-                    </Tooltip>
+                        Show more
+                    </Button>
+                </Box>
+                <SimpleNote message={props.message} />
+                {!props.simple && <MessageUrlPreview messageBody={props.message.payload.body.body} />}
+            </Box>
+            {(!props.simple && (
+                <>
+                    <MessageReactions message={props.message} />
                     <Box
                         sx={{
                             display: 'flex',
-                            flex: 1,
-                            flexDirection: 'column',
-                            width: '100%',
-                            overflow: 'auto'
+                            flexDirection: 'row-reverse',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 1,
+                            flexWrap: 'wrap'
                         }}
                     >
-                        <MessageHeader message={props.message} />
-                        {props.beforeMessage}
-                        <SimpleNote message={props.message} />
-                        <MessageUrlPreview messageBody={props.message.body} />
-                        <MessageReactions message={props.message} />
+                        <Box display="flex" flexDirection="row" alignItems="center">
+                            <PostedStreams message={props.message} />
+                            {props.rerouted &&
+                                (reroutedsame ? (
+                                    <ReplayIcon sx={{ color: 'text.secondary', fontSize: '90%' }} />
+                                ) : (
+                                    <>
+                                        <ArrowForwardIcon sx={{ color: 'text.secondary', fontSize: '90%' }} />
+                                        <PostedStreams message={props.rerouted} />
+                                    </>
+                                ))}
+                        </Box>
                         <MessageActions message={props.message} userCCID={props.userCCID} />
                     </Box>
                 </>
-            )}
-        </ListItem>
+            )) ||
+                undefined}
+        </ContentWithCCAvatar>
     )
 }

@@ -1,14 +1,30 @@
 import { Autocomplete, Box, Chip, InputBase, type SxProps } from '@mui/material'
-import { type Stream } from '@concurrent-world/client'
+import { type CommonstreamSchema, Schemas, type Stream } from '@concurrent-world/client'
+import { useMemo } from 'react'
 
 export interface StreamPickerProps {
-    selected: Stream[]
-    setSelected: (selected: Stream[]) => void
+    selected: Array<Stream<CommonstreamSchema>>
+    setSelected: (selected: Array<Stream<CommonstreamSchema>>) => void
     sx?: SxProps
-    options: Stream[]
+    options: Array<Stream<CommonstreamSchema>>
 }
 
 export const StreamPicker = (props: StreamPickerProps): JSX.Element => {
+    const selected = useMemo(
+        () =>
+            JSON.parse(
+                JSON.stringify(props.selected ?? [], (key, value) => {
+                    if (key === 'client' || key === 'api') {
+                        return undefined
+                    }
+                    return value
+                })
+            ).filter((stream: Stream<any>) => stream.schema === Schemas.commonstream) as Array<
+                Stream<CommonstreamSchema>
+            >,
+        [props.selected]
+    )
+
     return (
         <Box
             sx={{
@@ -23,9 +39,10 @@ export const StreamPicker = (props: StreamPickerProps): JSX.Element => {
                 filterSelectedOptions
                 sx={{ width: 1 }}
                 multiple
-                value={props.selected}
+                value={selected}
                 options={props.options}
-                getOptionLabel={(option) => option.name}
+                getOptionKey={(option: Stream<CommonstreamSchema>) => option.id ?? ''}
+                getOptionLabel={(option: Stream<CommonstreamSchema>) => option.payload.name}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 onChange={(_, value) => {
                     props.setSelected(value)
@@ -44,9 +61,12 @@ export const StreamPicker = (props: StreamPickerProps): JSX.Element => {
                 }}
                 renderTags={(value, getTagProps) =>
                     value.map((option, index) => (
-                        // disabling ESLint here becase 'key' should exist in {..getTagProps({index})}
-                        // eslint-disable-next-line
-                        <Chip label={option.name} sx={{ color: 'text.default' }} {...getTagProps({ index })} />
+                        <Chip
+                            label={option.payload.name}
+                            sx={{ color: 'text.default' }}
+                            {...getTagProps({ index })}
+                            key={option.id}
+                        />
                     ))
                 }
             />

@@ -1,7 +1,7 @@
 import type { Meta } from '@storybook/react'
 import { useState, useEffect } from 'react'
 import type { ConcurrentTheme } from '../../../model'
-import { createConcurrentTheme, Themes } from '../../../themes'
+import { loadConcurrentTheme, Themes } from '../../../themes'
 import { CssBaseline, ThemeProvider } from '@mui/material'
 import { LogoutButton } from './index'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
@@ -22,17 +22,17 @@ const meta = {
         }
     },
     args: {
-        themeName: 'basic'
+        themeName: 'blue'
     }
 } satisfies Meta<Props>
 
 export default meta
 
 export const Default = (arg: Props): JSX.Element => {
-    const [theme, setTheme] = useState<ConcurrentTheme>(createConcurrentTheme(arg.themeName ?? 'basic'))
+    const [theme, setTheme] = useState<ConcurrentTheme>(loadConcurrentTheme(arg.themeName ?? 'blue'))
 
     useEffect(() => {
-        setTheme(createConcurrentTheme(arg.themeName ?? 'basic'))
+        setTheme(loadConcurrentTheme(arg.themeName ?? 'blue'))
     }, [arg.themeName])
 
     return (

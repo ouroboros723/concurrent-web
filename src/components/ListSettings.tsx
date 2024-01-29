@@ -2,10 +2,12 @@ import { Box, Button, IconButton, List, ListItem, Switch, Tab, Tabs, TextField, 
 import { StreamPicker } from './ui/StreamPicker'
 import { useEffect, useState } from 'react'
 import { usePreference } from '../context/PreferenceContext'
-import { type Stream } from '@concurrent-world/client'
+import { type CommonstreamSchema, type Stream } from '@concurrent-world/client'
 import { useApi } from '../context/api'
 import { StreamLink, UserStreamLink } from './StreamList/StreamLink'
 import PlaylistRemoveIcon from '@mui/icons-material/PlaylistRemove'
+import { useTranslation } from 'react-i18next'
+import { type StreamList } from '../model'
 
 export interface ListSettingsProps {
     id: string
@@ -13,19 +15,21 @@ export interface ListSettingsProps {
 
 export function ListSettings(props: ListSettingsProps): JSX.Element {
     const client = useApi()
-    const pref = usePreference()
+    const [lists, setLists] = usePreference('lists')
     const [listName, setListName] = useState<string>('')
 
-    const list = pref.lists[props.id]
+    const { t } = useTranslation('', { keyPrefix: 'ui.listSettings' })
 
-    const [options, setOptions] = useState<Stream[]>([])
-    const [postStreams, setPostStreams] = useState<Stream[]>([])
+    const list = lists[props.id]
+
+    const [options, setOptions] = useState<Array<Stream<CommonstreamSchema>>>([])
+    const [postStreams, setPostStreams] = useState<Array<Stream<CommonstreamSchema>>>([])
 
     const [tab, setTab] = useState<'stream' | 'user'>('stream')
 
     useEffect(() => {
         if (props.id) {
-            const list = pref.lists[props.id]
+            const list = lists[props.id]
             if (list) {
                 setListName(list.label)
             }
@@ -34,13 +38,19 @@ export function ListSettings(props: ListSettingsProps): JSX.Element {
 
     useEffect(() => {
         Promise.all(list.streams.map((streamID) => client.getStream(streamID))).then((streams) => {
-            setOptions(streams.filter((e) => e !== null) as Stream[])
+            setOptions(streams.filter((e) => e !== null) as Array<Stream<CommonstreamSchema>>)
         })
 
         Promise.all(list.defaultPostStreams.map((streamID) => client.getStream(streamID))).then((streams) => {
-            setPostStreams(streams.filter((stream) => stream !== null) as Stream[])
+            setPostStreams(streams.filter((stream) => stream !== null) as Array<Stream<CommonstreamSchema>>)
         })
     }, [props.id])
+
+    const updateList = (id: string, list: StreamList): void => {
+        const old = lists
+        old[id] = list
+        setLists(JSON.parse(JSON.stringify(old)))
+    }
 
     return (
         <Box
@@ -51,8 +61,8 @@ export function ListSettings(props: ListSettingsProps): JSX.Element {
                 p: 1
             }}
         >
-            <Typography variant="h2">リスト設定</Typography>
-            <Typography variant="h3">リスト名</Typography>
+            <Typography variant="h2">{t('title')}</Typography>
+            <Typography variant="h3">{t('name')}</Typography>
             <Box display="flex" flexDirection="row">
                 <TextField
                     label="list name"
@@ -66,18 +76,17 @@ export function ListSettings(props: ListSettingsProps): JSX.Element {
                     }}
                 />
                 <Button
-                    variant="contained"
                     onClick={(_) => {
-                        pref.updateList(props.id, {
+                        updateList(props.id, {
                             ...list,
                             label: listName
                         })
                     }}
                 >
-                    Update
+                    {t('update')}
                 </Button>
             </Box>
-            <Typography variant="h3">デフォルト投稿先</Typography>
+            <Typography variant="h3">{t('defaultDest')}</Typography>
             <Box
                 sx={{
                     display: 'flex',
@@ -89,7 +98,7 @@ export function ListSettings(props: ListSettingsProps): JSX.Element {
                     options={options}
                     selected={postStreams}
                     setSelected={(value) => {
-                        pref.updateList(props.id, {
+                        updateList(props.id, {
                             ...list,
                             defaultPostStreams: value.map((e) => e.id)
                         })
@@ -99,26 +108,25 @@ export function ListSettings(props: ListSettingsProps): JSX.Element {
             </Box>
             {props.id !== 'home' && (
                 <>
-                    <Typography variant="h3">リストのピン</Typography>
+                    <Typography variant="h3">{t('pin')}</Typography>
                     <Switch
                         checked={list.pinned}
                         onChange={(_) => {
-                            pref.updateList(props.id, {
+                            updateList(props.id, {
                                 ...list,
                                 pinned: !list.pinned
                             })
                         }}
                     />
                     <Button
-                        variant="contained"
                         color="error"
                         onClick={(_) => {
-                            const old = pref.lists
+                            const old = lists
                             delete old[props.id]
-                            pref.setLists(JSON.parse(JSON.stringify(old)))
+                            setLists(JSON.parse(JSON.stringify(old)))
                         }}
                     >
-                        リストを削除
+                        {t('delete')}
                     </Button>
                 </>
             )}
@@ -130,8 +138,8 @@ export function ListSettings(props: ListSettingsProps): JSX.Element {
                 textColor="secondary"
                 indicatorColor="secondary"
             >
-                <Tab label="ストリーム" value="stream" />
-                <Tab label="ユーザー" value="user" />
+                <Tab label={t('stream')} value="stream" />
+                <Tab label={t('user')} value="user" />
             </Tabs>
             <List>
                 {tab === 'stream' &&
@@ -142,7 +150,7 @@ export function ListSettings(props: ListSettingsProps): JSX.Element {
                             secondaryAction={
                                 <IconButton
                                     onClick={(_) => {
-                                        pref.updateList(props.id, {
+                                        updateList(props.id, {
                                             ...list,
                                             streams: list.streams.filter((e) => e !== streamID)
                                         })
@@ -163,7 +171,7 @@ export function ListSettings(props: ListSettingsProps): JSX.Element {
                             secondaryAction={
                                 <IconButton
                                     onClick={(_) => {
-                                        pref.updateList(props.id, {
+                                        updateList(props.id, {
                                             ...list,
                                             userStreams: list.userStreams.filter(
                                                 (e) => e.streamID !== userstream.streamID

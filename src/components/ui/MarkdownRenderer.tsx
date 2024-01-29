@@ -1,5 +1,5 @@
 import { type ImgHTMLAttributes, type DetailedHTMLProps } from 'react'
-import { Box, Link, Typography } from '@mui/material'
+import { Box, Button, IconButton, Link, Typography } from '@mui/material'
 import { ReactMarkdown } from 'react-markdown/lib/react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -9,6 +9,13 @@ import breaks from 'remark-breaks'
 import { Codeblock } from './Codeblock'
 
 import type { EmojiLite } from '../../model'
+import { userMentionRemarkPlugin, emojiRemarkPlugin } from '../../util'
+import { CCUserChip } from './CCUserChip'
+import { LinkChip } from './LinkChip'
+import { ThemeCard } from '../ThemeCard'
+import { closeSnackbar, useSnackbar } from 'notistack'
+import { usePreference } from '../../context/PreferenceContext'
+import DownloadForOfflineIcon from '@mui/icons-material/DownloadForOffline'
 
 export interface MarkdownRendererProps {
     messagebody: string
@@ -17,26 +24,22 @@ export interface MarkdownRendererProps {
 
 const sanitizeOption = {
     ...defaultSchema,
-    tagNames: [...(defaultSchema.tagNames ?? []), 'marquee', 'video', 'source'],
+    tagNames: [...(defaultSchema.tagNames ?? []), 'marquee', 'video', 'source', 'userlink', 'emoji', 'social'],
     attributes: {
         ...defaultSchema.attributes,
         marquee: [...(defaultSchema.attributes?.marquee ?? []), 'direction', 'behavior', 'scrollamount'],
         video: [...(defaultSchema.attributes?.video ?? []), 'width', 'height', 'poster', 'loop'],
-        source: [...(defaultSchema.attributes?.source ?? []), 'src', 'type']
+        source: [...(defaultSchema.attributes?.source ?? []), 'src', 'type'],
+        userlink: ['ccid'],
+        emoji: ['shortcode'],
+        social: ['href', 'service', 'icon']
     }
 }
 
 export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
-    const genEmojiTag = (name: string, url: string): string => {
-        return `<img src="${url}" alt="emoji:${name}:" title=":${name}:"/>`
-    }
-    const messagebody = props.messagebody.replace(/:\w+:/gi, (name: string) => {
-        const emoji: EmojiLite | undefined = props.emojiDict[name.slice(1, -1)]
-        if (emoji) {
-            return genEmojiTag(name, emoji.animURL ?? emoji.imageURL ?? '')
-        }
-        return `${name}`
-    })
+    const { enqueueSnackbar } = useSnackbar()
+    const [themeName, setThemeName] = usePreference('themeName')
+    const [customThemes, setCustomThemes] = usePreference('customThemes')
 
     return (
         <Box
@@ -98,19 +101,40 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
             }}
         >
             <ReactMarkdown
-                remarkPlugins={[breaks, [remarkGfm, { singleTilde: false }]]}
+                remarkPlugins={[
+                    breaks,
+                    [remarkGfm, { singleTilde: false }],
+                    userMentionRemarkPlugin,
+                    emojiRemarkPlugin
+                ]}
                 rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeOption]]}
+                remarkRehypeOptions={{
+                    handlers: {
+                        userlink: (h, node) => {
+                            return h(node, 'userlink', { ccid: node.ccid })
+                        },
+                        emoji: (h, node) => {
+                            return h(node, 'emoji', { shortcode: node.shortcode })
+                        }
+                    }
+                }}
                 components={{
+                    userlink: ({ ccid }) => {
+                        return <CCUserChip ccid={ccid} />
+                    },
+                    social: ({ href, icon, service, children }) => {
+                        return (
+                            <LinkChip href={href} icon={icon} service={service}>
+                                {children}
+                            </LinkChip>
+                        )
+                    },
                     p: ({ children }) => (
                         <Typography
                             sx={{
                                 fontSize: {
                                     xs: '0.9rem',
                                     sm: '1rem'
-                                },
-                                marginBottom: {
-                                    xs: '4px',
-                                    sm: '8px'
                                 },
                                 mt: 1,
                                 mb: 1,
@@ -209,6 +233,50 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
                                   .split('\n')[0]
                                   .slice(3)
                             : ''
+
+                        if (language === 'theme') {
+                            try {
+                                const theme = JSON.parse(String(children))
+                                return (
+                                    <ThemeCard
+                                        theme={theme}
+                                        additionalButton={
+                                            <IconButton
+                                                onClick={() => {
+                                                    if (!theme.meta?.name) return
+                                                    enqueueSnackbar(`Theme downloaded: ${theme.meta.name}`, {
+                                                        autoHideDuration: 15000,
+                                                        action: (key) => (
+                                                            <Button
+                                                                onClick={() => {
+                                                                    setThemeName(themeName)
+                                                                    closeSnackbar(key)
+                                                                }}
+                                                            >
+                                                                Undo
+                                                            </Button>
+                                                        )
+                                                    })
+                                                    setThemeName(theme.meta.name)
+                                                    setCustomThemes({
+                                                        ...customThemes,
+                                                        [theme.meta.name]: theme
+                                                    })
+                                                }}
+                                                sx={{
+                                                    color: theme.palette.text.primary
+                                                }}
+                                            >
+                                                <DownloadForOfflineIcon />
+                                            </IconButton>
+                                        }
+                                    />
+                                )
+                            } catch (e) {
+                                console.error(e)
+                            }
+                        }
+
                         return inline ? (
                             <Box
                                 component="span"
@@ -234,17 +302,6 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
                         > &
                             ReactMarkdownProps
                     ) => {
-                        if (props.alt?.startsWith('emoji')) {
-                            return (
-                                <img
-                                    {...props}
-                                    style={{
-                                        height: '1.5em',
-                                        verticalAlign: '-0.5em'
-                                    }}
-                                />
-                            )
-                        }
                         return (
                             <a href={props.src} target="_blank" rel="noreferrer">
                                 <Box
@@ -257,6 +314,21 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
                                     }}
                                 />
                             </a>
+                        )
+                    },
+                    emoji: ({ shortcode }) => {
+                        const emoji = props.emojiDict[shortcode]
+                        return emoji ? (
+                            <img
+                                src={emoji?.animURL ?? emoji?.imageURL ?? ''}
+                                style={{
+                                    height: '1.25em',
+                                    verticalAlign: '-0.45em',
+                                    marginBottom: '4px'
+                                }}
+                            />
+                        ) : (
+                            <span>:{shortcode}:</span>
                         )
                     },
                     video: (props) => {
@@ -276,7 +348,7 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
                     }
                 }}
             >
-                {messagebody}
+                {props.messagebody}
             </ReactMarkdown>
         </Box>
     )

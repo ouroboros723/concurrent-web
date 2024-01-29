@@ -1,16 +1,19 @@
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import { useEffect, useState } from 'react'
-import { type Profile } from '@concurrent-world/client'
+import { type ProfileSchema } from '@concurrent-world/client'
 import Button from '@mui/material/Button'
 import { useApi } from '../context/api'
 import { CCAvatar } from './ui/CCAvatar'
 import Background from '../resources/defaultbg.png'
 import { alpha, useTheme } from '@mui/material'
 
+import { useTranslation } from 'react-i18next'
+import { MediaInput } from './ui/MediaInput'
+
 interface ProfileEditorProps {
-    initial?: Profile
-    onSubmit?: (profile: Profile) => void
+    initial?: ProfileSchema
+    onSubmit?: (profile: ProfileSchema) => void
     id?: string
 }
 
@@ -21,6 +24,8 @@ export function ProfileEditor(props: ProfileEditorProps): JSX.Element {
     const [avatar, setAvatar] = useState<string>(props.initial?.avatar ?? '')
     const [description, setDescription] = useState<string>(props.initial?.description ?? '')
     const [banner, setBanner] = useState<string>(props.initial?.banner ?? '')
+
+    const { t } = useTranslation('', { keyPrefix: 'ui.profileEditor' })
 
     const updateProfile = async (): Promise<void> => {
         if (props.id === undefined) {
@@ -93,29 +98,26 @@ export function ProfileEditor(props: ProfileEditorProps): JSX.Element {
                         setDescription(e.target.value)
                     }}
                 />
-                <TextField
+                <MediaInput
                     label="avatarURL"
-                    variant="outlined"
                     value={avatar}
                     onChange={(e) => {
-                        setAvatar(e.target.value)
+                        setAvatar(e)
                     }}
                 />
-                <TextField
+                <MediaInput
                     label="bannerURL"
-                    variant="outlined"
                     value={banner}
                     onChange={(e) => {
-                        setBanner(e.target.value)
+                        setBanner(e)
                     }}
                 />
                 <Button
-                    variant="contained"
                     onClick={(_) => {
                         updateProfile()
                     }}
                 >
-                    {props.id === undefined ? '新規作成' : '更新'}
+                    {props.id === undefined ? t('createNew') : t('update')}
                 </Button>
             </Box>
         </Box>

@@ -1,37 +1,14 @@
-import { createTheme } from '@mui/material'
+import { alpha, createTheme } from '@mui/material'
 import type { ConcurrentTheme } from './model'
 import { type DeepPartial } from './util'
 
 export const Themes: Record<string, DeepPartial<ConcurrentTheme>> = {
-    basic: {
-        palette: {
-            primary: {
-                main: '#7e7e7e'
-            },
-            secondary: {
-                main: '#737373'
-            },
-            background: {
-                default: '#9e9e9e',
-                contrastText: '#ffffff'
-            }
-        }
-    },
-    red: {
-        palette: {
-            primary: {
-                main: '#E0576F'
-            },
-            secondary: {
-                main: '#81225b'
-            },
-            background: {
-                default: '#C74E64',
-                contrastText: '#ffffff'
-            }
-        }
-    },
     blue: {
+        meta: {
+            name: 'blue',
+            author: 'CCb72AAc9dcF088F7088b6718BE5a494fBB3861439', // totegamma
+            comment: 'コンカレで一番最初に作られたテーマです！'
+        },
         palette: {
             primary: {
                 main: '#0476d9'
@@ -45,275 +22,12 @@ export const Themes: Record<string, DeepPartial<ConcurrentTheme>> = {
             }
         }
     },
-    orange: {
-        palette: {
-            primary: {
-                main: '#c52b26'
-            },
-            secondary: {
-                main: '#663916'
-            },
-            background: {
-                default: '#e07d43',
-                contrastText: '#ffffff'
-            }
-        }
-    },
-    highcontrast_bw: {
-        palette: {
-            primary: {
-                main: '#ffffff'
-            },
-            secondary: {
-                main: '#ffffff'
-            },
-            background: {
-                default: '#000000',
-                paper: '#000000',
-                contrastText: '#ffffff'
-            },
-            text: {
-                primary: '#ffffff',
-                secondary: 'rgba(255, 255, 255, 0.797)',
-                disabled: 'rgba(255, 255, 255, 0.703)'
-            },
-            divider: 'rgba(255, 255, 255, 0.2)'
-        },
-        shape: {
-            borderRadius: 1
-        },
-        components: {
-            MuiCssBaseline: {
-                styleOverrides: {
-                    '::-webkit-scrollbar-thumb': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        borderRadius: '10px'
-                    }
-                }
-            }
-        }
-    },
-    highcontrast_yb: {
-        palette: {
-            primary: {
-                main: '#f7cd12'
-            },
-            secondary: {
-                main: '#f7cd12'
-            },
-            background: {
-                default: '#000057',
-                paper: '#000000',
-                contrastText: '#fffF46'
-            },
-            text: {
-                primary: '#ffffff',
-                secondary: 'rgba(255, 255, 255, 0.7)',
-                disabled: 'rgba(255, 255, 255, 0.5)'
-            },
-            divider: 'rgba(255, 255, 255, 0.2)'
-        },
-        shape: {
-            borderRadius: 1
-        },
-        components: {
-            MuiCssBaseline: {
-                styleOverrides: {
-                    '::-webkit-scrollbar-thumb': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        borderRadius: '10px'
-                    }
-                }
-            }
-        }
-    },
-    rabbuttz: {
-        palette: {
-            primary: {
-                main: '#c52b26'
-            },
-            secondary: {
-                main: '#90591e'
-            },
-            background: {
-                default: '#e07d43',
-                paper: '#f8efdd',
-                contrastText: '#ffffff'
-            }
-        }
-    },
-    gammalab: {
-        palette: {
-            primary: {
-                main: '#FFF',
-                contrastText: '#000'
-            },
-            secondary: {
-                main: '#156a84'
-            },
-            background: {
-                default: '#0476D9',
-                paper: '#FFF',
-                contrastText: '#FFF'
-            },
-            divider: 'rgba(0, 0, 0, 0.2)'
-        },
-        shape: {
-            borderRadius: 4
-        }
-    },
-    tote: {
-        palette: {
-            primary: {
-                main: '#0469c1',
-                contrastText: '#cffffe'
-            },
-            secondary: {
-                main: '#154f90'
-            },
-            background: {
-                default: '#ffd54c',
-                paper: '#FFF',
-                contrastText: '#423e3e'
-            },
-            text: {
-                primary: '#363636',
-                secondary: 'rgba(58, 35, 32, 0.8)',
-                disabled: 'rgba(164, 164, 164, 0.6)'
-            },
-            divider: 'rgba(0, 0, 0, 0.2)'
-        }
-    },
-    cafe: {
-        palette: {
-            primary: {
-                main: '#663741'
-            },
-            secondary: {
-                main: '#663e37'
-            },
-            background: {
-                default: '#a99996',
-                paper: '#f7efea',
-                contrastText: '#ffffff'
-            }
-        },
-        shape: {
-            borderRadius: 2
-        }
-    },
-    rainyday: {
-        palette: {
-            primary: {
-                main: '#70868b'
-            },
-            secondary: {
-                main: '#4d6662'
-            },
-            background: {
-                default: '#839fa1',
-                paper: '#ebf3f5',
-                contrastText: '#ffffff'
-            },
-            text: {
-                primary: '#232d31',
-                secondary: 'rgba(52, 61, 66, 0.7)',
-                disabled: 'rgba(0, 0, 0, 0.5)'
-            },
-            divider: 'rgba(0, 0, 0, 0.2)'
-        },
-        shape: {
-            borderRadius: 0
-        }
-    },
-    oldcomputing: {
-        palette: {
-            primary: {
-                main: '#939195'
-            },
-            secondary: {
-                main: '#4b4b56'
-            },
-            background: {
-                default: '#6d6d70',
-                paper: '#f0edf1',
-                contrastText: '#ffffff'
-            }
-        },
-        shape: {
-            borderRadius: 2
-        }
-    },
-    redmond: {
-        palette: {
-            primary: {
-                main: '#00007C',
-                contrastText: '#FFF'
-            },
-            secondary: {
-                main: '#00007C'
-            },
-            background: {
-                default: '#377E7F',
-                paper: '#ffffff',
-                contrastText: '#ffffff'
-            }
-        },
-        shape: {
-            borderRadius: 0
-        }
-    },
-    ニンテン: {
-        palette: {
-            primary: {
-                main: '#7f2f2f',
-                contrastText: '#ffeba8'
-            },
-            secondary: {
-                main: '#5f4d3c'
-            },
-            background: {
-                default: '#e3dccc',
-                paper: '#f6f1e0',
-                contrastText: '#514a29'
-            },
-            text: {
-                primary: '#1a1a18',
-                secondary: 'rgba(0, 0, 0, 0.7)',
-                disabled: 'rgba(0, 0, 0, 0.5)'
-            },
-            divider: 'rgba(0, 0, 0, 0.2)'
-        },
-        shape: {
-            borderRadius: 0
-        }
-    },
-    sacher: {
-        palette: {
-            primary: {
-                main: '#c77e18',
-                contrastText: '#fffefa'
-            },
-            secondary: {
-                main: '#4a5a54'
-            },
-            background: {
-                default: '#188aa3',
-                paper: '#f6f1e0',
-                contrastText: '#fffef8'
-            },
-            text: {
-                primary: '#2e0d03',
-                secondary: '#4c6675',
-                disabled: 'rgba(0, 0, 0, 0.5)'
-            },
-            divider: 'rgba(0, 0, 0, 0.2)'
-        },
-        shape: {
-            borderRadius: 3
-        }
-    },
     blue2: {
+        meta: {
+            name: 'blue2',
+            author: 'CCBFe6f64AEE52A200B7C47D3D83680A226967d83C', // waonme
+            comment: 'コンカレで二番目に作られたわけではないテーマです！'
+        },
         palette: {
             primary: {
                 main: '#116691'
@@ -345,6 +59,11 @@ export const Themes: Record<string, DeepPartial<ConcurrentTheme>> = {
         }
     },
     darkgray: {
+        meta: {
+            name: 'darkgray',
+            author: 'CCBFe6f64AEE52A200B7C47D3D83680A226967d83C', // waonme
+            comment: '黒背景よりはダークグレーの方が落ち着くんだ'
+        },
         palette: {
             primary: {
                 main: '#555',
@@ -379,39 +98,87 @@ export const Themes: Record<string, DeepPartial<ConcurrentTheme>> = {
             borderRadius: 2
         }
     },
-    messy: {
+    cafe: {
+        meta: {
+            name: 'cafe',
+            author: 'CCBFe6f64AEE52A200B7C47D3D83680A226967d83C', // waonme
+            comment: 'すくなくともスタバではなさそうだ'
+        },
         palette: {
             primary: {
-                main: '#7f2f2f',
-                contrastText: '#fff2c3'
+                main: '#663741'
             },
             secondary: {
-                main: '#9b7298'
+                main: '#663e37'
             },
             background: {
-                default: '#18171d',
-                paper: '#242023',
-                contrastText: '#f1f1ca'
-            },
-            text: {
-                primary: '#fbffd4',
-                secondary: 'rgba(255, 255, 255, 0.7)',
-                disabled: 'rgba(255, 255, 255, 0.5)'
-            },
-            divider: 'rgba(255, 255, 255, 0.2)'
-        },
-        components: {
-            MuiCssBaseline: {
-                styleOverrides: {
-                    '::-webkit-scrollbar-thumb': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        borderRadius: '10px'
-                    }
-                }
+                default: '#a99996',
+                paper: '#f7efea',
+                contrastText: '#ffffff'
             }
         },
         shape: {
             borderRadius: 2
+        }
+    },
+    rainyday: {
+        meta: {
+            name: 'rainyday',
+            author: 'CCBFe6f64AEE52A200B7C47D3D83680A226967d83C', // waonme
+            comment: 'そういう日もある'
+        },
+        palette: {
+            primary: {
+                main: '#70868b'
+            },
+            secondary: {
+                main: '#4d6662'
+            },
+            background: {
+                default: '#839fa1',
+                paper: '#ebf3f5',
+                contrastText: '#ffffff'
+            },
+            text: {
+                primary: '#232d31',
+                secondary: 'rgba(52, 61, 66, 0.7)',
+                disabled: 'rgba(0, 0, 0, 0.5)'
+            },
+            divider: 'rgba(0, 0, 0, 0.2)'
+        },
+        shape: {
+            borderRadius: 0
+        }
+    },
+    sacher: {
+        meta: {
+            name: 'sacher',
+            author: 'CCBFe6f64AEE52A200B7C47D3D83680A226967d83C', // waonme
+            comment:
+                '![ザッハさん](https://worldfile.cc/CCBFe6f64AEE52A200B7C47D3D83680A226967d83C/988bf80b-96ca-4bb9-83ff-cd962932b616)'
+        },
+        palette: {
+            primary: {
+                main: '#c77e18',
+                contrastText: '#fffefa'
+            },
+            secondary: {
+                main: '#4a5a54'
+            },
+            background: {
+                default: '#188aa3',
+                paper: '#f6f1e0',
+                contrastText: '#fffef8'
+            },
+            text: {
+                primary: '#2e0d03',
+                secondary: '#4c6675',
+                disabled: 'rgba(0, 0, 0, 0.5)'
+            },
+            divider: 'rgba(0, 0, 0, 0.2)'
+        },
+        shape: {
+            borderRadius: 3
         }
     }
 }
@@ -427,6 +194,11 @@ export const ConcurrentDefaultTheme = {
         background: {
             default: '#9e9e9e',
             contrastText: '#ffffff'
+        },
+        text: {
+            primary: '#000000',
+            secondary: '#000000',
+            disabled: 'rgba(0, 0, 0, 0.5)'
         }
     },
     typography: {
@@ -480,6 +252,9 @@ export const ConcurrentDefaultTheme = {
                 root: {
                     padding: '4px 16px'
                 }
+            },
+            defaultProps: {
+                variant: 'contained'
             }
         },
         MuiCssBaseline: {
@@ -492,8 +267,14 @@ export const ConcurrentDefaultTheme = {
                     backgroundColor: 'rgba(0, 0, 0, 0.2)',
                     borderRadius: '10px'
                 },
+                html: {
+                    overscrollBehaviorY: 'none'
+                },
                 body: {
                     overflowX: 'hidden'
+                },
+                '.snackbar-container-mobile': {
+                    bottom: 'calc(55px + env(safe-area-inset-bottom))'
                 }
             }
         }
@@ -523,7 +304,32 @@ export function deepMerge(target: Record<string, any>, source: Record<string, an
     return output as ConcurrentTheme
 }
 
-export const createConcurrentTheme = (name: string): ConcurrentTheme => {
-    const theme: ConcurrentTheme = deepMerge(ConcurrentDefaultTheme, Themes[name])
+export const createConcurrentThemeFromObject = (base: any): ConcurrentTheme => {
+    if (base.palette.text !== undefined) {
+        if (base.palette.text.hint === undefined) base.palette.text.hint = alpha(base.palette.text.primary, 0.5)
+        if (base.palette.text.disabled === undefined) base.palette.text.disabled = alpha(base.palette.text.primary, 0.5)
+        if (base.palette.divider === undefined) base.palette.divider = alpha(base.palette.text.primary, 0.12)
+    }
+
+    if (base.palette.text?.primary && !base.components)
+        base.components = {
+            MuiCssBaseline: {
+                styleOverrides: {
+                    '::-webkit-scrollbar-thumb': {
+                        backgroundColor: alpha(base.palette.text.primary, 0.2)
+                    }
+                }
+            }
+        }
+
+    const theme: ConcurrentTheme = deepMerge(ConcurrentDefaultTheme, base)
     return createTheme(theme) as ConcurrentTheme
+}
+
+export const loadConcurrentTheme = (
+    name: string,
+    customs: Record<string, DeepPartial<ConcurrentTheme>> = {}
+): ConcurrentTheme => {
+    const base = customs[name] ?? Themes[name] ?? Themes.blue
+    return createConcurrentThemeFromObject(base)
 }

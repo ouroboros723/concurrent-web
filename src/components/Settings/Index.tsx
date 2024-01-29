@@ -12,10 +12,13 @@ import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet'
 import { useSnackbar } from 'notistack'
 import { LogoutButton } from './LogoutButton'
 import { IconButtonWithLabel } from '../ui/IconButtonWithLabel'
+import { useTranslation } from 'react-i18next'
 
 export function SettingsIndex(): JSX.Element {
     const client = useApi()
     const { enqueueSnackbar } = useSnackbar()
+
+    const { t } = useTranslation('', { keyPrefix: '' })
 
     const deleteAllCache = (): void => {
         if (window.caches) {
@@ -51,7 +54,7 @@ export function SettingsIndex(): JSX.Element {
                     to={'/settings/profile'}
                 >
                     <CCAvatar
-                        avatarURL={client?.user?.profile?.avatar}
+                        avatarURL={client?.user?.profile?.payload.body.avatar}
                         identiconSource={client.ccid}
                         sx={{
                             width: '40px',
@@ -59,14 +62,13 @@ export function SettingsIndex(): JSX.Element {
                         }}
                     />
                     <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', flexFlow: 'column' }}>
-                        <Typography color="contrastText">{client?.user?.profile?.username}</Typography>
+                        <Typography color="contrastText">{client?.user?.profile?.payload.body.username}</Typography>
                         <Typography variant="caption" color="background.contrastText">
                             {client.api.host}
                         </Typography>
                     </Box>
                 </ButtonBase>
                 <Button
-                    variant="contained"
                     onClick={(_) => {
                         if (client.api.host === undefined) {
                             return
@@ -88,13 +90,33 @@ export function SettingsIndex(): JSX.Element {
                     padding: 1
                 }}
             >
-                <IconButtonWithLabel link icon={SettingsIcon} label="General" to="/settings/general" />
-                <IconButtonWithLabel link icon={AccountCircleIcon} label="Profile" to="/settings/profile" />
-                <IconButtonWithLabel link icon={PaletteIcon} label="Theme" to="/settings/theme" />
-                <IconButtonWithLabel link icon={VolumeUpIcon} label="Sound" to="/settings/sound" />
-                <IconButtonWithLabel link icon={EmojiEmotionsIcon} label="Emoji" to="/settings/emoji" />
-                <IconButtonWithLabel link icon={PhotoIcon} label="Media" to="/settings/media" />
-                <IconButtonWithLabel link icon={SettingsEthernetIcon} label="ActivityPub" to="/settings/activitypub" />
+                <IconButtonWithLabel
+                    link
+                    icon={SettingsIcon}
+                    label={t('settings.general.title')}
+                    to="/settings/general"
+                />
+                <IconButtonWithLabel
+                    link
+                    icon={AccountCircleIcon}
+                    label={t('settings.profile.title')}
+                    to="/settings/profile"
+                />
+                <IconButtonWithLabel link icon={PaletteIcon} label={t('settings.theme.title')} to="/settings/theme" />
+                <IconButtonWithLabel link icon={VolumeUpIcon} label={t('settings.sound.title')} to="/settings/sound" />
+                <IconButtonWithLabel
+                    link
+                    icon={EmojiEmotionsIcon}
+                    label={t('settings.emoji.title')}
+                    to="/settings/emoji"
+                />
+                <IconButtonWithLabel link icon={PhotoIcon} label={t('settings.media.title')} to="/settings/media" />
+                <IconButtonWithLabel
+                    link
+                    icon={SettingsEthernetIcon}
+                    label={t('settings.ap.title')}
+                    to="/settings/activitypub"
+                />
             </Paper>
             <Paper
                 variant="outlined"
@@ -106,23 +128,21 @@ export function SettingsIndex(): JSX.Element {
                 }}
             >
                 <Typography variant="h2" gutterBottom>
-                    Actions
+                    {t('pages.settings.actions.title')}
                 </Typography>
                 <Button
-                    variant="contained"
                     onClick={(_) => {
                         deleteAllCache()
                     }}
                 >
-                    Clear Cache
+                    {t('pages.settings.actions.clearCache')}
                 </Button>
                 <Button
-                    variant="contained"
                     onClick={(_) => {
                         window.location.reload()
                     }}
                 >
-                    Force Reload
+                    {t('pages.settings.actions.forceReload')}
                 </Button>
                 <LogoutButton />
             </Paper>

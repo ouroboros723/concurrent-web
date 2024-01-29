@@ -1,15 +1,11 @@
 import { useEffect, useState, createContext, useRef, useMemo, useCallback } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
-import { darken, Box, Paper, ThemeProvider, CssBaseline } from '@mui/material'
-import useWebSocket, { type ReadyState } from 'react-use-websocket'
+import { darken, Box, Paper, ThemeProvider, CssBaseline, Typography, useMediaQuery } from '@mui/material'
 import { SnackbarProvider, enqueueSnackbar } from 'notistack'
 
-import { useObjectList } from './hooks/useObjectList'
-
-import { Schemas, type CoreServerEvent } from '@concurrent-world/client'
-import { createConcurrentTheme } from './themes'
+import { loadConcurrentTheme } from './themes'
 import { Menu } from './components/Menu/Menu'
-import type { StreamElementDated, ConcurrentTheme } from './model'
+import type { ConcurrentTheme } from './model'
 import {
     Associations,
     Explorer,
@@ -29,41 +25,50 @@ import { GlobalActionsProvider } from './context/GlobalActions'
 import { EmojiPickerProvider } from './context/EmojiPickerContext'
 
 import { ThinMenu } from './components/Menu/ThinMenu'
-import { type UserAckCollection } from '@concurrent-world/client/dist/types/schemas/userAckCollection'
-import { type CollectionItem } from '@concurrent-world/client/dist/types/model/core'
+import { type StreamEvent } from '@concurrent-world/client/dist/types/model/core'
 import { ConcurrentLogo } from './components/theming/ConcurrentLogo'
 import { usePreference } from './context/PreferenceContext'
 import TickerProvider from './context/Ticker'
+import { ContactsPage } from './pages/Contacts'
+import {
+    type CoreAssociation,
+    Schemas,
+    type Subscription,
+    type ProfileSchema,
+    type User,
+    type Association,
+    type ReplyAssociationSchema
+} from '@concurrent-world/client'
+import { UrlSummaryProvider } from './context/urlSummaryContext'
+import { StorageProvider } from './context/StorageContext'
+import { MarkdownRendererLite } from './components/ui/MarkdownRendererLite'
 
 export const ApplicationContext = createContext<appData>({
-    websocketState: -1,
     displayingStream: [],
     acklist: [],
     updateAcklist: () => {}
 })
 
 export interface appData {
-    websocketState: ReadyState
     displayingStream: string[]
-    acklist: Array<CollectionItem<UserAckCollection>>
+    acklist: User[]
     updateAcklist: () => void
 }
 
 function App(): JSX.Element {
     const client = useApi()
-    const pref = usePreference()
+    const [themeName] = usePreference('themeName')
+    const [lists] = usePreference('lists')
+    const [sound] = usePreference('sound')
+    const [customThemes] = usePreference('customThemes')
 
-    const [theme, setTheme] = useState<ConcurrentTheme>(createConcurrentTheme(pref.themeName))
-    const messages = useObjectList<StreamElementDated>()
+    const [theme, setTheme] = useState<ConcurrentTheme>(loadConcurrentTheme(themeName, customThemes))
+    const isMobileSize = useMediaQuery(theme.breakpoints.down('sm'))
 
-    const [acklist, setAcklist] = useState<Array<CollectionItem<UserAckCollection>>>([])
+    const [acklist, setAcklist] = useState<User[]>([])
     const updateAcklist = useCallback(() => {
-        if (!client) return
-        const collectionID = client.user?.userstreams?.ackCollection
-        if (!collectionID) return
-        client.api.readCollection<UserAckCollection>(collectionID).then((ackCollection) => {
-            if (!ackCollection) return
-            setAcklist(ackCollection.items)
+        client.user?.getAcking().then((acklist) => {
+            setAcklist(acklist)
         })
     }, [client, client?.user])
 
@@ -71,12 +76,142 @@ function App(): JSX.Element {
         updateAcklist()
     }, [client, client?.user])
 
+    const subscription = useRef<Subscription>()
+
+    useEffect(() => {
+        if (!client) return
+        client.newSubscription().then((sub) => {
+            subscription.current = sub
+            subscription.current.listen([
+                ...(client?.user?.userstreams?.payload.body.notificationStream
+                    ? [client?.user?.userstreams.payload.body.notificationStream]
+                    : [])
+            ])
+            sub.on('AssociationCreated', (event: StreamEvent) => {
+                const a = event.body as CoreAssociation<any>
+                if (!a) return
+                if (a.schema === Schemas.replyAssociation) {
+                    const replyassociation = a as Association<ReplyAssociationSchema>
+                    console.log(replyassociation)
+                    client?.api
+                        .readMessageWithAuthor(
+                            replyassociation.payload.body.messageId,
+                            replyassociation.payload.body.messageAuthor
+                        )
+                        .then((m) => {
+                            m &&
+                                client?.api.readCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
+                                    playNotificationRef.current()
+                                    enqueueSnackbar(
+                                        <Box display="flex" flexDirection="column">
+                                            <Typography>
+                                                {c?.payload.body.username ?? 'anonymous'} replied to your message:{' '}
+                                            </Typography>
+                                            <MarkdownRendererLite
+                                                messagebody={m.payload.body.body as string}
+                                                emojiDict={m.payload.body.emojis ?? {}}
+                                                limit={128}
+                                            />
+                                        </Box>
+                                    )
+                                })
+                        })
+                    return
+                }
+
+                if (a.schema === Schemas.rerouteAssociation) {
+                    client?.api.readMessageWithAuthor(a.targetID, event.item.owner).then((m) => {
+                        m &&
+                            client?.api.readCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
+                                playNotificationRef.current()
+                                enqueueSnackbar(
+                                    <Box display="flex" flexDirection="column">
+                                        <Typography>
+                                            {c?.payload.body.username ?? 'anonymous'} rerouted to your message:{' '}
+                                        </Typography>
+                                        <MarkdownRendererLite
+                                            messagebody={m.payload.body.body as string}
+                                            emojiDict={m.payload.body.emojis ?? {}}
+                                            limit={128}
+                                        />
+                                    </Box>
+                                )
+                            })
+                    })
+                    return
+                }
+
+                if (a.schema === Schemas.like) {
+                    client?.api.readMessageWithAuthor(a.targetID, event.item.owner).then((m) => {
+                        m &&
+                            client.api.readCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
+                                playNotificationRef.current()
+                                enqueueSnackbar(
+                                    <Box display="flex" flexDirection="column">
+                                        <Typography>{c?.payload.body.username ?? 'anonymous'} favorited</Typography>
+                                        <MarkdownRendererLite
+                                            messagebody={m.payload.body.body as string}
+                                            emojiDict={m.payload.body.emojis ?? {}}
+                                            limit={128}
+                                        />
+                                    </Box>
+                                )
+                            })
+                    })
+                    return
+                }
+
+                if (a.schema === Schemas.emojiAssociation) {
+                    client.api.readMessageWithAuthor(a.targetID, event.item.owner).then((m) => {
+                        console.log(m)
+                        m &&
+                            client.api.readCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
+                                playNotificationRef.current()
+                                enqueueSnackbar(
+                                    <Box display="flex" flexDirection="column">
+                                        <Typography>
+                                            {c?.payload.body.username ?? 'anonymous'} reacted{' '}
+                                            <img src={a.payload.body.imageUrl as string} style={{ height: '1em' }} />
+                                        </Typography>
+                                        <MarkdownRendererLite
+                                            messagebody={m.payload.body.body as string}
+                                            emojiDict={m.payload.body.emojis ?? {}}
+                                            limit={128}
+                                        />
+                                    </Box>
+                                )
+                            })
+                    })
+                }
+
+                if (a.schema === Schemas.mention) {
+                    client?.api.readMessageWithAuthor(a.targetID, event.item.owner).then((m) => {
+                        m &&
+                            client.api.readCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
+                                playNotificationRef.current()
+                                enqueueSnackbar(
+                                    <Box display="flex" flexDirection="column">
+                                        {c?.payload.body.username ?? 'anonymous'} mentioned you:{' '}
+                                        <MarkdownRendererLite
+                                            messagebody={m.payload.body.body as string}
+                                            emojiDict={m.payload.body.emojis ?? {}}
+                                            limit={128}
+                                        />
+                                    </Box>
+                                )
+                            })
+                    })
+                }
+            })
+        })
+    }, [client])
+
     const path = useLocation()
     const displayingStream: string[] = useMemo(() => {
         switch (path.pathname) {
             case '/': {
                 const rawid = path.hash.replace('#', '')
-                const list = pref.lists[rawid] ?? Object.values(pref.lists)[0]
+                const list = lists[rawid] ?? Object.values(lists)[0]
                 if (!list) return []
                 console.log(list)
                 return [...list.streams, list.userStreams.map((e) => e.streamID)].flat()
@@ -86,12 +221,12 @@ function App(): JSX.Element {
                 return path.hash.replace('#', '').split(',')
             }
             case '/notifications': {
-                const notifications = client?.user?.userstreams?.notificationStream
+                const notifications = client?.user?.userstreams?.payload.body.notificationStream
                 if (!notifications) return []
                 return [notifications]
             }
             case '/associations': {
-                const associations = client?.user?.userstreams?.associationStream
+                const associations = client?.user?.userstreams?.payload.body.associationStream
                 if (!associations) return []
                 return [associations]
             }
@@ -101,152 +236,14 @@ function App(): JSX.Element {
         }
     }, [client, path])
 
-    const { lastMessage, readyState, sendJsonMessage } = useWebSocket(`wss://${client.host}/api/v1/socket`, {
-        shouldReconnect: (_) => true,
-        reconnectInterval: (attempt) => Math.min(Math.pow(2, attempt) * 1000, 10000),
-        onOpen: (_) => {
-            sendJsonMessage({ channels: displayingStream })
-        }
-    })
-
-    const [playBubble] = useSound(pref.postSound, { volume: pref.volume / 100 })
-    const [playNotification] = useSound(pref.notificationSound, { volume: pref.volume / 100 })
-    const playBubbleRef = useRef(playBubble)
+    const [playNotification] = useSound(sound.notification, { volume: sound.volume / 100 })
     const playNotificationRef = useRef(playNotification)
     useEffect(() => {
-        playBubbleRef.current = playBubble
         playNotificationRef.current = playNotification
-    }, [playBubble, playNotification])
+    }, [playNotification])
 
     useEffect(() => {
-        sendJsonMessage({
-            channels: [
-                ...displayingStream,
-                ...(client?.user?.userstreams?.notificationStream ? [client?.user?.userstreams.notificationStream] : [])
-            ]
-        })
-    }, [displayingStream, client])
-
-    useEffect(() => {
-        if (!lastMessage) return
-        const event: CoreServerEvent = JSON.parse(lastMessage.data)
-        if (!event) return
-        switch (event.type) {
-            case 'message': {
-                switch (event.action) {
-                    case 'create': {
-                        if (messages.current.find((e) => e.id === event.body.id) != null) {
-                            return
-                        }
-                        const current = new Date().getTime()
-                        messages.pushFront(
-                            {
-                                ...event.body,
-                                LastUpdated: current
-                            },
-                            (lhs: StreamElementDated[], rhs: StreamElementDated) =>
-                                lhs.find((e: StreamElementDated) => e.id === rhs.id) == null
-                        )
-                        playBubbleRef.current()
-                        break
-                    }
-                    default:
-                        console.log('unknown message action', event)
-                        break
-                }
-                break
-            }
-            case 'association': {
-                switch (event.action) {
-                    case 'create': {
-                        client?.api.invalidateMessage(event.body.id)
-                        const target = messages.current.find((e) => e.id === event.body.id)
-                        if (target) {
-                            target.LastUpdated = new Date().getTime()
-                            messages.update((e) => [...e])
-                        }
-                        if (event.stream === client?.user?.userstreams?.notificationStream) {
-                            playNotificationRef.current()
-                            client?.api.readAssociation(event.body.id, event.body.domain).then((a) => {
-                                if (!a) return
-                                if (a.schema === Schemas.replyAssociation) {
-                                    client?.api.readCharacter(a.author, Schemas.profile).then((c) => {
-                                        enqueueSnackbar(
-                                            `${c?.payload.body.username ?? 'anonymous'} replied to your message.`
-                                        )
-                                    })
-                                    return
-                                }
-
-                                if (a.schema === Schemas.rerouteAssociation) {
-                                    client?.api.readCharacter(a.author, Schemas.profile).then((c) => {
-                                        enqueueSnackbar(
-                                            `${c?.payload.body.username ?? 'anonymous'} rerouted to your message.`
-                                        )
-                                    })
-                                    return
-                                }
-
-                                if (a.schema === Schemas.like) {
-                                    client?.api.readMessage(a.targetID).then((m) => {
-                                        m &&
-                                            client.api.readCharacter(a.author, Schemas.profile).then((c) => {
-                                                enqueueSnackbar(
-                                                    `${c?.payload.body.username ?? 'anonymous'} favorited "${
-                                                        (m.payload.body.body as string) ?? 'your message.'
-                                                    }"`
-                                                )
-                                            })
-                                    })
-                                    return
-                                }
-
-                                if (a.schema === Schemas.emojiAssociation) {
-                                    client.api.readMessage(a.targetID).then((m) => {
-                                        console.log(m)
-                                        m &&
-                                            client.api.readCharacter(a.author, Schemas.profile).then((c) => {
-                                                enqueueSnackbar(
-                                                    `${c?.payload.body.username ?? 'anonymous'} reacted to "${
-                                                        (m.payload.body.body as string) ?? 'your message.'
-                                                    }" with ${
-                                                        (m.associations.at(-1)?.payload.body.shortcode as string) ??
-                                                        'emoji'
-                                                    }`
-                                                )
-                                            })
-                                    })
-                                    return
-                                }
-
-                                enqueueSnackbar('unknown association received.')
-                            })
-                        }
-                        break
-                    }
-                    case 'delete': {
-                        client?.api.invalidateMessage(event.body.id)
-                        const target = messages.current.find((e) => e.id === event.body.id)
-                        if (target) {
-                            target.LastUpdated = new Date().getTime()
-                            messages.update((e) => [...e])
-                        }
-                        break
-                    }
-                    default:
-                        console.log('unknown message action', event)
-                        break
-                }
-                break
-            }
-            default:
-                console.log('unknown event', event)
-                break
-        }
-    }, [lastMessage])
-
-    useEffect(() => {
-        const newtheme = createConcurrentTheme(pref.themeName)
+        const newtheme = loadConcurrentTheme(themeName, customThemes)
         setTheme(newtheme)
         let themeColorMetaTag: HTMLMetaElement = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement
         if (!themeColorMetaTag) {
@@ -255,30 +252,36 @@ function App(): JSX.Element {
             document.head.appendChild(themeColorMetaTag)
         }
         themeColorMetaTag.content = newtheme.palette.background.default
-    }, [pref.themeName])
+    }, [themeName, customThemes])
 
     const applicationContext = useMemo(() => {
         return {
-            websocketState: readyState,
             displayingStream,
             acklist,
             updateAcklist
         }
-    }, [readyState, displayingStream, acklist, updateAcklist])
+    }, [displayingStream, acklist, updateAcklist])
 
     if (!client) {
         return <>building api service...</>
     }
 
     const providers = (childs: JSX.Element): JSX.Element => (
-        <SnackbarProvider preventDuplicate>
+        <SnackbarProvider
+            preventDuplicate
+            classes={isMobileSize ? { containerRoot: 'snackbar-container-mobile' } : undefined}
+        >
             <ThemeProvider theme={theme}>
                 <CssBaseline />
                 <TickerProvider>
                     <ApplicationContext.Provider value={applicationContext}>
-                        <EmojiPickerProvider>
-                            <GlobalActionsProvider>{childs}</GlobalActionsProvider>
-                        </EmojiPickerProvider>
+                        <UrlSummaryProvider host={client.host}>
+                            <EmojiPickerProvider>
+                                <StorageProvider>
+                                    <GlobalActionsProvider>{childs}</GlobalActionsProvider>
+                                </StorageProvider>
+                            </EmojiPickerProvider>
+                        </UrlSummaryProvider>
                     </ApplicationContext.Provider>
                 </TickerProvider>
             </ThemeProvider>
@@ -358,11 +361,12 @@ function App(): JSX.Element {
                             }}
                         >
                             <Routes>
-                                <Route index element={<ListPage messages={messages} />} />
-                                <Route path="/stream" element={<StreamPage messages={messages} />} />
-                                <Route path="/associations" element={<Associations messages={messages} />} />
+                                <Route index element={<ListPage />} />
+                                <Route path="/stream" element={<StreamPage />} />
+                                <Route path="/associations" element={<Associations />} />
+                                <Route path="/contacts" element={<ContactsPage />} />
                                 <Route path="/explorer" element={<Explorer />} />
-                                <Route path="/notifications" element={<Notifications messages={messages} />} />
+                                <Route path="/notifications" element={<Notifications />} />
                                 <Route path="/settings/*" element={<Settings />} />
                                 <Route path="/message/:id" element={<MessagePage />} />
                                 <Route path="/entity/:id" element={<EntityPage />} />

@@ -14,10 +14,10 @@ import { Link } from 'react-router-dom'
 
 import HomeIcon from '@mui/icons-material/Home'
 import TerminalIcon from '@mui/icons-material/Terminal'
-import MessageIcon from '@mui/icons-material/Message'
 import ExploreIcon from '@mui/icons-material/Explore'
 import SettingsIcon from '@mui/icons-material/Settings'
 import NotificationsIcon from '@mui/icons-material/Notifications'
+import ContactsIcon from '@mui/icons-material/Contacts'
 import { memo, useContext } from 'react'
 import { ApplicationContext } from '../../App'
 // @ts-expect-error vite dynamic import
@@ -29,6 +29,7 @@ import { CCAvatar } from '../ui/CCAvatar'
 import { useApi } from '../../context/api'
 import { usePreference } from '../../context/PreferenceContext'
 import { useGlobalActions } from '../../context/GlobalActions'
+import { useTranslation } from 'react-i18next'
 
 const branchName = branch || window.location.host.split('.')[0]
 
@@ -38,9 +39,11 @@ export interface MenuProps {
 
 export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
     const client = useApi()
-    const pref = usePreference()
     const appData = useContext(ApplicationContext)
     const actions = useGlobalActions()
+    const { t } = useTranslation('', { keyPrefix: 'pages' })
+    const [devMode] = usePreference('devMode')
+    const [showEditorOnTop] = usePreference('showEditorOnTop')
 
     if (!appData) {
         return <>loading...</>
@@ -74,7 +77,7 @@ export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
                         onClick={props.onClick}
                     >
                         <CCAvatar
-                            avatarURL={client?.user?.profile?.avatar}
+                            avatarURL={client?.user?.profile?.payload.body.avatar}
                             identiconSource={client.ccid}
                             sx={{
                                 width: '40px',
@@ -82,7 +85,7 @@ export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
                             }}
                         />
                         <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', flexFlow: 'column' }}>
-                            <Typography color="contrastText">{client?.user?.profile?.username}</Typography>
+                            <Typography color="contrastText">{client?.user?.profile?.payload.body.username}</Typography>
                             <Typography variant="caption" color="background.contrastText">
                                 {client.api.host}
                             </Typography>
@@ -105,7 +108,7 @@ export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
                                         color: 'background.contrastText'
                                     }}
                                 />
-                                <ListItemText primary="Home" />
+                                <ListItemText primary={t('home.title')} />
                             </ListItemButton>
                         </ListItem>
                         <ListItem disablePadding>
@@ -121,18 +124,18 @@ export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
                                     }}
                                 />
 
-                                <ListItemText primary="Notifications" />
+                                <ListItemText primary={t('notifications.title')} />
                             </ListItemButton>
                         </ListItem>
                         <ListItem disablePadding>
-                            <ListItemButton sx={{ gap: 1 }} component={Link} to="/associations" onClick={props.onClick}>
-                                <MessageIcon
+                            <ListItemButton sx={{ gap: 1 }} component={Link} to="/contacts" onClick={props.onClick}>
+                                <ContactsIcon
                                     sx={{
                                         color: 'background.contrastText'
                                     }}
                                 />
 
-                                <ListItemText primary="Associations" />
+                                <ListItemText primary={t('contacts.title')} />
                             </ListItemButton>
                         </ListItem>
                         <ListItem disablePadding>
@@ -143,10 +146,10 @@ export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
                                     }}
                                 />
 
-                                <ListItemText primary="Explorer" />
+                                <ListItemText primary={t('explore.title')} />
                             </ListItemButton>
                         </ListItem>
-                        {pref.devMode && (
+                        {devMode && (
                             <ListItem disablePadding>
                                 <ListItemButton sx={{ gap: 1 }} component={Link} to="/devtool" onClick={props.onClick}>
                                     <TerminalIcon
@@ -155,7 +158,7 @@ export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
                                         }}
                                     />
 
-                                    <ListItemText primary="DevTool" />
+                                    <ListItemText primary={t('devtool.title')} />
                                 </ListItemButton>
                             </ListItem>
                         )}
@@ -166,7 +169,7 @@ export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
                                         color: 'background.contrastText'
                                     }}
                                 />
-                                <ListItemText primary="Settings" />
+                                <ListItemText primary={t('settings.title')} />
                             </ListItemButton>
                         </ListItem>
                     </List>
@@ -185,15 +188,16 @@ export const Menu = memo<MenuProps>((props: MenuProps): JSX.Element => {
                 >
                     <StreamList />
                 </Box>
-                {!pref.showEditorOnTop && (
+                {!showEditorOnTop && (
                     <Button
-                        variant="contained"
                         endIcon={<CreateIcon />}
                         onClick={() => {
                             actions.openDraft()
                         }}
                         sx={{
-                            display: { xs: 'none', sm: 'flex' }
+                            display: { xs: 'none', sm: 'flex' },
+                            height: 36,
+                            borderRadius: `100px`
                         }}
                     >
                         投稿する

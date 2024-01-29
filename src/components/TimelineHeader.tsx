@@ -1,6 +1,5 @@
-import { useContext, memo } from 'react'
-import { IconButton, Box, useTheme, Button } from '@mui/material'
-import { ApplicationContext } from '../App'
+import { memo } from 'react'
+import { IconButton, Box, useTheme, AppBar, Toolbar } from '@mui/material'
 import { ConcurrentLogo } from './theming/ConcurrentLogo'
 import type { ConcurrentTheme } from '../model'
 import { useGlobalActions } from '../context/GlobalActions'
@@ -15,56 +14,49 @@ export interface TimelineHeaderProps {
 }
 
 export const TimelineHeader = memo<TimelineHeaderProps>((props: TimelineHeaderProps): JSX.Element => {
-    const appData = useContext(ApplicationContext)
     const theme = useTheme<ConcurrentTheme>()
     const actions = useGlobalActions()
 
-    const iconColor = appData.websocketState === 1 ? theme.palette.background.contrastText : theme.palette.text.disabled
+    const color =
+        theme.components?.MuiAppBar?.defaultProps?.color === 'transparent'
+            ? theme.palette.primary.main
+            : theme.palette.primary.contrastText
+
+    const bgColor =
+        theme.components?.MuiAppBar?.defaultProps?.color === 'transparent'
+            ? theme.palette.background.paper
+            : theme.palette.primary.main
 
     return (
-        <Box
+        <AppBar
+            elevation={0}
+            position="relative"
             sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: theme.palette.primary.main
+                borderLeft: 'none',
+                borderTop: 'none',
+                borderRight: 'none',
+                backgroundColor: bgColor
             }}
+            onClick={props.onTitleClick}
         >
-            <Box sx={{ background: 'white' }}></Box>
-            <Box
-                sx={{
-                    p: { xs: '', sm: '2px 2px 2px 16px' },
-                    display: 'flex',
-                    alignItems: 'center',
-                    width: '100%',
-                    borderRadius: '9999px',
-                    background: 'none'
-                }}
-            >
-                <IconButton
-                    sx={{
-                        p: '8px',
-                        display: { xs: 'inherit', sm: 'none' }
-                    }}
-                    onClick={() => {
-                        actions.openMobileMenu(true)
-                    }}
-                >
-                    <ConcurrentLogo size="25px" upperColor={iconColor} lowerColor={iconColor} frameColor={iconColor} />
-                </IconButton>
-                <Button
-                    sx={{
-                        width: 1,
-                        color: 'primary.contrastText'
-                    }}
-                    onClick={props.onTitleClick}
-                    disableRipple
-                >
+            <Toolbar variant="dense">
+                <Box width="40px" height="40px">
+                    <IconButton
+                        sx={{
+                            display: { xs: 'inherit', sm: 'none' }
+                        }}
+                        onClick={() => {
+                            actions.openMobileMenu(true)
+                        }}
+                    >
+                        <ConcurrentLogo size="25px" upperColor={color} lowerColor={color} frameColor={color} />
+                    </IconButton>
+                </Box>
+                <Box display="flex" flex={1} color={color} alignItems="center" justifyContent="center">
                     {props.titleIcon}
                     <b>{props.title}</b>
-                </Button>
-                <Box sx={{ position: 'relative', width: '40px', height: '40px', mr: '8px' }}>
+                </Box>
+                <Box width="40px" height="40px">
                     {props.useRawSecondaryAction ? (
                         props.secondaryAction
                     ) : (
@@ -72,7 +64,7 @@ export const TimelineHeader = memo<TimelineHeaderProps>((props: TimelineHeaderPr
                             sx={{
                                 p: 1,
                                 position: 'absolute',
-                                color: 'primary.contrastText'
+                                color: { color }
                             }}
                             onClick={props.onSecondaryActionClick}
                         >
@@ -80,8 +72,8 @@ export const TimelineHeader = memo<TimelineHeaderProps>((props: TimelineHeaderPr
                         </IconButton>
                     )}
                 </Box>
-            </Box>
-        </Box>
+            </Toolbar>
+        </AppBar>
     )
 })
 TimelineHeader.displayName = 'TimelineHeader'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef, memo, useContext } from 'react'
 import {
     InputBase,
     Box,
@@ -12,47 +12,61 @@ import {
     List,
     ListItemIcon,
     ListItemText,
-    ListItemButton
+    ListItemButton,
+    Collapse,
+    Fade,
+    Typography,
+    Backdrop,
+    type SxProps,
+    Popper
 } from '@mui/material'
-import { MarkdownRenderer } from './ui/MarkdownRenderer'
 import { StreamPicker } from './ui/StreamPicker'
 import { closeSnackbar, useSnackbar } from 'notistack'
-import { usePreference } from '../context/PreferenceContext'
 import { usePersistent } from '../hooks/usePersistent'
 
 import SendIcon from '@mui/icons-material/Send'
 import HomeIcon from '@mui/icons-material/Home'
 import ImageIcon from '@mui/icons-material/Image'
 import DeleteIcon from '@mui/icons-material/Delete'
-import Splitscreen from '@mui/icons-material/Splitscreen'
+import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown'
 import EmojiEmotions from '@mui/icons-material/EmojiEmotions'
 import { useEmojiPicker } from '../context/EmojiPickerContext'
 import caretPosition from 'textarea-caret'
-import { type Stream } from '@concurrent-world/client'
+import { type CommonstreamSchema, type Stream, type User, type CreateCurrentOptions } from '@concurrent-world/client'
 import { useApi } from '../context/api'
 import { type Emoji, type EmojiLite } from '../model'
 import { useNavigate } from 'react-router-dom'
 
+import { useTranslation } from 'react-i18next'
+import { DummyMessageView } from './Message/DummyMessageView'
+
+import { ApplicationContext } from '../App'
+import { useStorage } from '../context/StorageContext'
+
 export interface DraftProps {
     submitButtonLabel?: string
-    streamPickerInitial: Stream[]
-    streamPickerOptions: Stream[]
-    onSubmit: (text: string, destinations: string[], emojis?: Record<string, EmojiLite>) => Promise<Error | null>
+    streamPickerInitial: Array<Stream<CommonstreamSchema>>
+    streamPickerOptions: Array<Stream<CommonstreamSchema>>
+    onSubmit: (text: string, destinations: string[], options?: CreateCurrentOptions) => Promise<Error | null>
     allowEmpty?: boolean
     autoFocus?: boolean
+    placeholder?: string
+    sx?: SxProps
+    value?: string
 }
 
 export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
     const client = useApi()
     const theme = useTheme()
-    const pref = usePreference()
+    const { acklist } = useContext(ApplicationContext)
     const emojiPicker = useEmojiPicker()
     const navigate = useNavigate()
+    const { uploadFile, isUploadReady } = useStorage()
 
-    const [destStreams, setDestStreams] = useState<Stream[]>(props.streamPickerInitial)
+    const [destStreams, setDestStreams] = useState<Array<Stream<CommonstreamSchema>>>(props.streamPickerInitial)
 
     const [draft, setDraft] = usePersistent<string>('draft', '')
-    const [openPreview, setOpenPreview] = useState<boolean>(false)
+    const [openPreview, setOpenPreview] = useState<boolean>(true)
 
     const textInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -65,6 +79,9 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
     const [enableSuggestions, setEnableSuggestions] = useState<boolean>(false)
     const [emojiSuggestions, setEmojiSuggestions] = useState<Emoji[]>([])
 
+    const [enableUserPicker, setEnableUserPicker] = useState<boolean>(true)
+    const [userSuggestions, setUserSuggestions] = useState<User[]>([])
+
     const [selectedSuggestions, setSelectedSuggestions] = useState<number>(0)
 
     const timerRef = useRef<any | null>(null)
@@ -75,10 +92,19 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
         setDestStreams(props.streamPickerInitial)
     }, [props.streamPickerInitial])
 
+    useEffect(() => {
+        if (props.value && props.value !== '') {
+            setDraft(props.value)
+        }
+    }, [props.value])
+
     const [emojiDict, setEmojiDict] = useState<Record<string, EmojiLite>>({})
 
     const insertEmoji = (emoji: Emoji): void => {
-        const newDraft = draft.slice(0, caretPos.left) + `:${emoji.shortcode}:` + draft.slice(caretPos.left)
+        const newDraft =
+            draft.slice(0, textInputRef.current?.selectionEnd ?? 0) +
+            `:${emoji.shortcode}:` +
+            draft.slice(textInputRef.current?.selectionEnd ?? 0)
         setDraft(newDraft)
         setEnableSuggestions(false)
         setSelectedSuggestions(0)
@@ -96,11 +122,14 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
         }
         const destStreamIDs = destStreams.map((s) => s.id)
         const dest = [
-            ...new Set([...destStreamIDs, ...(postHome ? [client?.user?.userstreams?.homeStream] : [])])
+            ...new Set([...destStreamIDs, ...(postHome ? [client?.user?.userstreams?.payload.body.homeStream] : [])])
         ].filter((e) => e) as string[]
+
+        const mentions = draft.match(/@([^\s@]+)/g)?.map((e) => e.slice(1)) ?? []
+
         setSending(true)
         props
-            .onSubmit(draft, dest, emojiDict)
+            .onSubmit(draft, dest, { emojis: emojiDict, mentions })
             .then((error) => {
                 if (error) {
                     enqueueSnackbar(`Failed to post message: ${error.message}`, { variant: 'error' })
@@ -114,53 +143,24 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
             })
     }
 
-    const uploadToImgur = async (base64Data: string): Promise<string> => {
-        const url = 'https://api.imgur.com/3/image'
-
-        if (!pref.imgurClientID) return ''
-
-        const result = await fetch(url, {
-            method: 'POST',
-            headers: {
-                Authorization: `Client-ID ${pref.imgurClientID}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                type: 'base64',
-                image: base64Data.replace(/^data:image\/[a-zA-Z]*;base64,/, '')
-            })
-        })
-        return (await result.json()).data.link
+    const handlePasteImage = async (event: any): Promise<void> => {
+        const imageFile = event.clipboardData?.items[0].getAsFile()
+        if (!imageFile) return
+        await uploadImage(imageFile)
     }
 
-    const handlePasteImage = (event: any): void => {
-        const isImage = event.clipboardData?.items[0].type?.includes('image')
+    const uploadImage = async (imageFile: File): Promise<void> => {
+        const isImage = imageFile.type.includes('image')
         if (isImage) {
-            const imageFile = event.clipboardData?.items[0].getAsFile()
-            if (imageFile) {
-                const uploadingText = ' ![uploading...]()'
-                setDraft(draft + uploadingText)
-
-                const URLObj = window.URL || window.webkitURL
-                const imgSrc = URLObj.createObjectURL(imageFile)
-                console.log(imageFile, imgSrc)
-                const reader = new FileReader()
-                reader.onload = async (event) => {
-                    const base64Text = event
-                    if (!base64Text.target) return
-                    try {
-                        const result = await uploadToImgur(base64Text.target.result as string)
-                        setDraft(draft.replace(uploadingText, ''))
-                        if (!result) {
-                            setDraft(draft + `![upload failed]()`)
-                            return
-                        }
-                        setDraft(draft + `![image](${result})`)
-                    } catch (e) {
-                        setDraft(draft + `![upload failed]()`)
-                    }
-                }
-                reader.readAsDataURL(imageFile)
+            const uploadingText = ' ![uploading...]()'
+            setDraft(draft + uploadingText)
+            const result = await uploadFile(imageFile)
+            if (!result) {
+                setDraft(draft.replace(uploadingText, ''))
+                setDraft(draft + `![upload failed]()`)
+            } else {
+                setDraft(draft.replace(uploadingText, ''))
+                setDraft(draft + `![image](${result})`)
             }
         }
     }
@@ -168,24 +168,20 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
     const onFileInputChange = async (event: any): Promise<void> => {
         const file = event.target.files[0]
         if (!file) return
-        const URLObj = window.URL || window.webkitURL
-        const imgSrc = URLObj.createObjectURL(file)
-        console.log(file, imgSrc)
-        const reader = new FileReader()
-        reader.onload = async (event) => {
-            const base64Text = event
-            if (!base64Text.target) return
-            console.log(event)
-            const result = await uploadToImgur(base64Text.target.result as string)
-            if (!result) return
-            setDraft(draft + `![image](${result})`)
-        }
-        reader.readAsDataURL(file)
+        await uploadImage(file)
     }
 
     const onFileUploadClick = (): void => {
         if (fileInputRef.current) {
             fileInputRef.current.click()
+        }
+    }
+
+    const onSuggestConfirm = (index: number): void => {
+        if (enableSuggestions) {
+            onEmojiSuggestConfirm(index)
+        } else if (enableUserPicker) {
+            onUserSuggestConfirm(index)
         }
     }
 
@@ -214,6 +210,27 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
         }
     }
 
+    const onUserSuggestConfirm = (index: number): void => {
+        console.log('user confirm', index)
+        const before = draft.slice(0, textInputRef.current?.selectionEnd ?? 0) ?? ''
+        const colonPos = before.lastIndexOf('@')
+        if (colonPos === -1) return
+        const after = draft.slice(textInputRef.current?.selectionEnd ?? 0) ?? ''
+
+        const selected = userSuggestions[index]
+
+        setDraft(before.slice(0, colonPos) + `@${selected.ccid} ` + after)
+        setEnableUserPicker(false)
+
+        if (timerRef.current) {
+            clearTimeout(timerRef.current)
+            timerRef.current = null
+            textInputRef.current?.focus()
+        }
+    }
+
+    const { t } = useTranslation('', { keyPrefix: 'ui.draft' })
+
     return (
         <Box
             sx={{
@@ -222,36 +239,24 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                 flexDirection: 'column',
                 alignItems: 'stretch',
                 borderColor: 'text.disabled',
-                width: '100%'
+                width: '100%',
+                ...props.sx
             }}
         >
-            <Paper
-                sx={{
-                    top: `${caretPos.top}px`,
-                    left: `${caretPos.left}px`,
-                    position: 'fixed',
-                    display: enableSuggestions ? 'flex' : 'none',
-                    zIndex: 1000
-                }}
-            >
-                <List dense>
-                    {emojiSuggestions.map((emoji, index) => (
-                        <ListItemButton
-                            dense
-                            key={emoji.imageURL}
-                            selected={index === selectedSuggestions}
-                            onClick={() => {
-                                onEmojiSuggestConfirm(index)
-                            }}
-                        >
-                            <ListItemIcon>
-                                <Box component="img" src={emoji.imageURL} sx={{ width: '1em', height: '1em' }} />
-                            </ListItemIcon>
-                            <ListItemText>{emoji.shortcode}</ListItemText>
-                        </ListItemButton>
-                    ))}
-                </List>
-            </Paper>
+            {sending && (
+                <Backdrop
+                    sx={{
+                        position: 'absolute',
+                        zIndex: (theme) => theme.zIndex.drawer + 1,
+                        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                        height: '100%',
+                        color: '#fff'
+                    }}
+                    open={sending}
+                >
+                    <CircularProgress color="inherit" />
+                </Backdrop>
+            )}
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Box
@@ -267,7 +272,7 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                         setSelected={setDestStreams}
                     />
                 </Box>
-                <Tooltip title={postHome ? 'ホーム同時投稿モード' : 'ストリーム限定投稿モード'} arrow placement="top">
+                <Tooltip title={postHome ? t('postToHome') : t('noPostToHome')} arrow placement="top">
                     <IconButton
                         onClick={() => {
                             setPostHome(!postHome)
@@ -282,8 +287,8 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                     display: 'flex',
                     flexDirection: { xs: 'column', md: 'row' },
                     alignItems: 'start',
-                    px: '10px',
-                    gap: 2
+                    gap: 2,
+                    px: 1
                 }}
             >
                 <InputBase
@@ -296,38 +301,61 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
 
                         const before = e.target.value.slice(0, e.target.selectionEnd ?? 0) ?? ''
                         const query = /:(\w+)$/.exec(before)?.[1]
+                        const userQuery = /@([^\s@]+)$/.exec(before)?.[1]
 
                         if (!query) {
                             setEnableSuggestions(false)
+                        }
+
+                        if (!userQuery) {
+                            setEnableUserPicker(false)
+                        }
+
+                        if (!query && !userQuery) {
                             return
                         }
 
-                        setEmojiSuggestions(emojiPicker.search(query))
-                        setEnableSuggestions(true)
+                        if (query) {
+                            setEmojiSuggestions(emojiPicker.search(query))
+                            setEnableSuggestions(true)
+                        }
+
+                        if (userQuery) {
+                            console.log(acklist, userQuery)
+                            setUserSuggestions(
+                                acklist.filter((q) =>
+                                    q.profile?.payload.body.username?.toLowerCase()?.includes(userQuery)
+                                )
+                            )
+                            setEnableUserPicker(true)
+                        }
 
                         // move suggestion box
                         const pos = caretPosition(e.target, e.target.selectionEnd ?? 0, {})
-                        const parent = textInputRef.current?.getBoundingClientRect()
-                        const offset = 10
-                        if (pos && parent) {
+                        if (pos) {
                             setCaretPos({
-                                top: parent.top + pos.top + offset,
-                                left: parent.left + pos.left + offset
+                                top: pos.top - 50,
+                                left: pos.left + 10
                             })
                         }
                     }}
-                    onPaste={handlePasteImage}
-                    placeholder="今、なにしてる？"
+                    onPaste={(e) => {
+                        handlePasteImage(e)
+                    }}
+                    placeholder={props.placeholder ?? t('placeholder')}
                     autoFocus={props.autoFocus}
                     sx={{
                         width: 1,
                         fontSize: '0.95rem'
                     }}
                     onKeyDown={(e: any) => {
-                        if (enableSuggestions && emojiSuggestions.length > 0) {
+                        if (
+                            (enableSuggestions && emojiSuggestions.length > 0) ||
+                            (enableUserPicker && userSuggestions.length > 0)
+                        ) {
                             if (e.key === 'Enter') {
                                 e.preventDefault()
-                                onEmojiSuggestConfirm(selectedSuggestions)
+                                onSuggestConfirm(selectedSuggestions)
                                 return
                             }
                             if (e.key === 'ArrowUp') {
@@ -344,7 +372,7 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                             }
                             if (e.key === ':') {
                                 e.preventDefault()
-                                onEmojiSuggestConfirm(0)
+                                onSuggestConfirm(0)
                             }
                         }
                         if (draft.length === 0 || draft.trim().length === 0) return
@@ -362,21 +390,86 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                     }}
                     inputRef={textInputRef}
                 />
-                {openPreview && (
-                    <>
-                        <Divider flexItem />
-                        <Divider orientation="vertical" flexItem />
-                        <Box
-                            sx={{
-                                width: 1,
-                                maxHeight: '171px',
-                                overflowY: 'scroll'
-                            }}
-                        >
-                            <MarkdownRenderer messagebody={draft} emojiDict={emojiDict} />
-                        </Box>
-                    </>
-                )}
+                <Popper
+                    open={enableSuggestions}
+                    anchorEl={textInputRef.current}
+                    placement="bottom-start"
+                    modifiers={[
+                        {
+                            name: 'offset',
+                            options: {
+                                offset: [caretPos.left, caretPos.top]
+                            }
+                        }
+                    ]}
+                    sx={{
+                        zIndex: (theme) => theme.zIndex.tooltip + 1
+                    }}
+                >
+                    <Paper>
+                        <List dense>
+                            {emojiSuggestions.map((emoji, index) => (
+                                <ListItemButton
+                                    dense
+                                    key={emoji.imageURL}
+                                    selected={index === selectedSuggestions}
+                                    onClick={() => {
+                                        onEmojiSuggestConfirm(index)
+                                    }}
+                                >
+                                    <ListItemIcon>
+                                        <Box
+                                            component="img"
+                                            src={emoji.imageURL}
+                                            sx={{ width: '1em', height: '1em' }}
+                                        />
+                                    </ListItemIcon>
+                                    <ListItemText>{emoji.shortcode}</ListItemText>
+                                </ListItemButton>
+                            ))}
+                        </List>
+                    </Paper>
+                </Popper>
+                <Popper
+                    open={enableUserPicker}
+                    anchorEl={textInputRef.current}
+                    placement="bottom-start"
+                    modifiers={[
+                        {
+                            name: 'offset',
+                            options: {
+                                offset: [caretPos.left, caretPos.top]
+                            }
+                        }
+                    ]}
+                    sx={{
+                        zIndex: (theme) => theme.zIndex.tooltip + 1
+                    }}
+                >
+                    <Paper>
+                        <List dense>
+                            {userSuggestions.map((user, index) => (
+                                <ListItemButton
+                                    dense
+                                    key={user.profile?.payload.body.avatar}
+                                    selected={index === selectedSuggestions}
+                                    onClick={() => {
+                                        onUserSuggestConfirm(index)
+                                    }}
+                                >
+                                    <ListItemIcon>
+                                        <Box
+                                            component="img"
+                                            src={user.profile?.payload.body.avatar}
+                                            sx={{ width: '1em', height: '1em' }}
+                                        />
+                                    </ListItemIcon>
+                                    <ListItemText>{user.profile?.payload.body.username}</ListItemText>
+                                </ListItemButton>
+                            ))}
+                        </List>
+                    </Paper>
+                </Popper>
             </Box>
             <Box
                 sx={{
@@ -387,10 +480,10 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
             >
                 <Box>
                     <Tooltip
-                        title={pref.imgurClientID === '' ? '設定から画像投稿設定をしてください' : '画像の添付'}
+                        title={isUploadReady ? t('attachImage') : t('cantAttachImage')}
                         arrow
                         placement="top"
-                        enterDelay={pref.imgurClientID === '' ? 0 : 500}
+                        enterDelay={isUploadReady ? 500 : 0}
                     >
                         <span>
                             <IconButton
@@ -398,10 +491,10 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                                     color: theme.palette.text.secondary
                                 }}
                                 onClick={() => {
-                                    if (pref.imgurClientID === '') {
-                                        navigate('/settings/media')
-                                    } else {
+                                    if (isUploadReady) {
                                         onFileUploadClick()
+                                    } else {
+                                        navigate('/settings/media')
                                     }
                                 }}
                             >
@@ -418,22 +511,10 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                             </IconButton>
                         </span>
                     </Tooltip>
-                    <Tooltip title="本文をプレビュー" arrow placement="top" enterDelay={500}>
+                    <Tooltip title={t('emoji')} arrow placement="top" enterDelay={500}>
                         <IconButton
                             sx={{
-                                color: theme.palette.text.secondary
-                            }}
-                            onClick={() => {
-                                setOpenPreview(!openPreview)
-                            }}
-                        >
-                            <Splitscreen sx={{ transform: 'rotate(90deg)', fontSize: '80%' }} />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="絵文字" arrow placement="top" enterDelay={500}>
-                        <IconButton
-                            sx={{
-                                color: theme.palette.text.secondary
+                                color: 'text.secondary'
                             }}
                             onClick={(e) => {
                                 emojiPicker.open(e.currentTarget, (emoji) => {
@@ -445,7 +526,7 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                             <EmojiEmotions sx={{ fontSize: '80%' }} />
                         </IconButton>
                     </Tooltip>
-                    <Tooltip title="下書きを削除" arrow placement="top" enterDelay={500}>
+                    <Tooltip title={t('clearDraft')} arrow placement="top" enterDelay={500}>
                         <span>
                             <IconButton
                                 sx={{
@@ -479,13 +560,39 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                 <Box
                     sx={{
                         display: 'flex',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        gap: 1
                     }}
                 >
+                    <Tooltip
+                        arrow
+                        placement="top"
+                        title={openPreview ? t('closePreview') : t('openPreview')}
+                        enterDelay={500}
+                    >
+                        <Fade in={draft.length > 0}>
+                            <IconButton
+                                sx={{
+                                    color: 'text.secondary'
+                                }}
+                                onClick={() => {
+                                    setOpenPreview(!openPreview)
+                                }}
+                            >
+                                <ExpandCircleDownIcon
+                                    sx={{
+                                        fontSize: '80%',
+                                        transform: openPreview ? 'rotate(0deg)' : 'rotate(180deg)',
+                                        transition: 'transform 0.2s ease-in-out'
+                                    }}
+                                />
+                            </IconButton>
+                        </Fade>
+                    </Tooltip>
+
                     <Box>
                         <Button
                             color="primary"
-                            variant="contained"
                             disabled={sending}
                             onClick={(_) => {
                                 post()
@@ -498,24 +605,40 @@ export const Draft = memo<DraftProps>((props: DraftProps): JSX.Element => {
                             }}
                             endIcon={<SendIcon />}
                         >
-                            {props.submitButtonLabel ?? 'POST'}
+                            {props.submitButtonLabel ?? t('current')}
                         </Button>
-                        {sending && (
-                            <CircularProgress
-                                size={24}
-                                sx={{
-                                    color: 'primary.main',
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    marginTop: '-12px',
-                                    marginLeft: '-12px'
-                                }}
-                            />
-                        )}
                     </Box>
                 </Box>
             </Box>
+            <Collapse unmountOnExit in={openPreview && draft.length > 0}>
+                <Divider
+                    sx={{
+                        my: 1,
+                        borderStyle: 'dashed'
+                    }}
+                />
+
+                <DummyMessageView
+                    message={{
+                        body: draft,
+                        emojis: emojiDict
+                    }}
+                    user={client.user?.profile?.payload.body}
+                    userCCID={client.user?.ccid}
+                    timestamp={
+                        <Typography
+                            sx={{
+                                backgroundColor: 'divider',
+                                color: 'primary.contrastText',
+                                px: 1,
+                                fontSize: '0.75rem'
+                            }}
+                        >
+                            {t('preview')}
+                        </Typography>
+                    }
+                />
+            </Collapse>
         </Box>
     )
 })

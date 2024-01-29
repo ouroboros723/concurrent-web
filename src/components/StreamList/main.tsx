@@ -5,9 +5,11 @@ import { StreamListItem } from './StreamListItem'
 import AddIcon from '@mui/icons-material/Add'
 import ListIcon from '@mui/icons-material/List'
 import { useGlobalActions } from '../../context/GlobalActions'
+import { useTranslation } from 'react-i18next'
 
 export const StreamList = (): JSX.Element => {
-    const pref = usePreference()
+    const { t } = useTranslation('', { keyPrefix: 'pages' })
+    const [lists, setLists] = usePreference('lists')
     const actions = useGlobalActions()
     return (
         <List
@@ -26,7 +28,7 @@ export const StreamList = (): JSX.Element => {
                             color: 'background.contrastText'
                         }}
                         onClick={() => {
-                            const old = pref.lists
+                            const old = lists
                             old[uuidv4()] = {
                                 label: 'new list',
                                 pinned: false,
@@ -35,7 +37,7 @@ export const StreamList = (): JSX.Element => {
                                 userStreams: [],
                                 defaultPostStreams: []
                             }
-                            pref.setLists(JSON.parse(JSON.stringify(old)))
+                            setLists(old)
                         }}
                     >
                         <AddIcon />
@@ -50,13 +52,13 @@ export const StreamList = (): JSX.Element => {
                         color: 'background.contrastText'
                     }}
                 />
-                <ListItemText primary="Lists" />
+                <ListItemText primary={t('lists.title')} />
             </ListItem>
-            {Object.keys(pref.lists).map((key) => (
+            {Object.keys(lists).map((key) => (
                 <StreamListItem
                     key={key}
                     id={key}
-                    body={pref.lists[key]}
+                    body={lists[key]}
                     onClick={() => {
                         actions.openMobileMenu(false)
                     }}

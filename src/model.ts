@@ -9,9 +9,9 @@ import type {
     TypeText
 } from '@mui/material/styles/createPalette'
 
-import type { CoreStreamElement, Stream } from '@concurrent-world/client'
+import type { CommonstreamSchema, CoreStreamItem, Stream } from '@concurrent-world/client'
 
-export interface StreamElementDated extends CoreStreamElement {
+export interface StreamItemDated extends CoreStreamItem {
     LastUpdated: number
 }
 
@@ -71,8 +71,15 @@ interface ConcurrentPalette extends Palette {
     augmentColor: (options: PaletteAugmentColorOptions) => PaletteColor
 }
 
+export interface ConcurrentThemeMeta {
+    name?: string
+    author?: string
+    comment?: string
+}
+
 export interface ConcurrentTheme extends Theme {
     palette: ConcurrentPalette
+    meta?: ConcurrentThemeMeta
 }
 
 export interface StreamList {
@@ -91,7 +98,7 @@ export interface userHomeStream {
 
 export interface StreamWithDomain {
     domain: string
-    stream: Stream
+    stream: Stream<CommonstreamSchema>
 }
 
 export type CCID = string
@@ -104,4 +111,13 @@ export interface ApEntity {
     homestream: string
     notificationstream: string
     followstream: string
+}
+
+export interface s3Config {
+    endpoint: string
+    accessKeyId: string
+    secretAccessKey: string
+    bucketName: string
+    publicUrl: string
+    forcePathStyle: boolean
 }

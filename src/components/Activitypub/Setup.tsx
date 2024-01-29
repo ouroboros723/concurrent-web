@@ -5,14 +5,25 @@ import { useSnackbar } from 'notistack'
 import { Schemas } from '@concurrent-world/client'
 import { usePreference } from '../../context/PreferenceContext'
 
+import { useTranslation } from 'react-i18next'
+import { type StreamList } from '../../model'
+
 export const ApSetup = (): JSX.Element => {
     const client = useApi()
-    const pref = usePreference()
+    const [lists, setLists] = usePreference('lists')
     const [userID, setUserID] = useState('')
     const { enqueueSnackbar } = useSnackbar()
 
     const [loading, setLoading] = useState<boolean>(false)
     const [entityFound, setEntityFound] = useState<boolean>(false)
+
+    const { t } = useTranslation('', { keyPrefix: 'settings.ap' })
+
+    const updateList = (id: string, list: StreamList): void => {
+        const old = lists
+        old[id] = list
+        setLists(JSON.parse(JSON.stringify(old)))
+    }
 
     useEffect(() => {
         setLoading(true)
@@ -61,10 +72,10 @@ export const ApSetup = (): JSX.Element => {
             }
         )
 
-        const oldhome = pref.lists.home
+        const oldhome = lists.home
         if (oldhome) {
             oldhome.streams.push(followstream.id)
-            pref.updateList('home', oldhome)
+            updateList('home', oldhome)
         }
 
         await client.api
@@ -75,8 +86,8 @@ export const ApSetup = (): JSX.Element => {
                 },
                 body: JSON.stringify({
                     id: userID,
-                    homestream: client?.user?.userstreams?.homeStream,
-                    notificationstream: client?.user?.userstreams?.notificationStream,
+                    homestream: client?.user?.userstreams?.payload.body.homeStream,
+                    notificationstream: client?.user?.userstreams?.payload.body.notificationStream,
                     followstream: followstream.id
                 })
             })
@@ -95,9 +106,9 @@ export const ApSetup = (): JSX.Element => {
                 },
                 body: JSON.stringify({
                     id: userID,
-                    name: client?.user?.profile?.username,
-                    summary: client?.user?.profile?.description,
-                    icon_url: client?.user?.profile?.avatar
+                    name: client?.user?.profile?.payload.body.username,
+                    summary: client?.user?.profile?.payload.body.description,
+                    icon_url: client?.user?.profile?.payload.body.avatar
                 })
             })
             .then(async (res) => await res.json())
@@ -113,9 +124,9 @@ export const ApSetup = (): JSX.Element => {
     return (
         <Box display="flex" flexDirection="column" gap={1}>
             <Typography>
-                ActivityPubにおけるIDを設定します。
+                {t('setup')}
                 <br />
-                一度登録すると変更できません
+                {t('cantBeChangedOnceRegistered')}
                 <br />
             </Typography>
             <TextField
@@ -125,25 +136,22 @@ export const ApSetup = (): JSX.Element => {
                     setUserID(x.target.value)
                 }}
                 error={userID.length > 0 && !userID.match(/^[a-zA-Z0-9_]+$/)}
-                helperText={
-                    userID.length > 0 && !userID.match(/^[a-zA-Z0-9_]+$/) ? 'a-z, A-Z, 0-9, _が使用できます' : ''
-                }
+                helperText={userID.length > 0 && !userID.match(/^[a-zA-Z0-9_]+$/) ? t('helperText') : ''}
             />
             {entityFound && (
                 <Typography>
-                    このユーザーは既に登録されています。
+                    {t('alreadyRegistered')}
                     <br />
-                    他のIDを試してください
+                    {t('tryAnotherID')}
                 </Typography>
             )}
             <Button
-                variant="contained"
                 onClick={() => {
                     register()
                 }}
                 disabled={userID.length === 0 || !userID.match(/^[a-zA-Z0-9_]+$/) || entityFound || loading}
             >
-                {loading ? '確認中...' : '登録'}
+                {loading ? t('confirming') : t('register')}
             </Button>
         </Box>
     )

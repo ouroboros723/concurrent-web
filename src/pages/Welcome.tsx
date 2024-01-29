@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
-import { Themes, createConcurrentTheme } from '../themes'
-import { Button, CssBaseline, IconButton, Link, ThemeProvider, Typography } from '@mui/material'
+import { Themes, loadConcurrentTheme } from '../themes'
+import { Button, CssBaseline, IconButton, ThemeProvider, Typography } from '@mui/material'
 import { useState } from 'react'
 import { usePersistent } from '../hooks/usePersistent'
 import type { ConcurrentTheme } from '../model'
@@ -11,10 +11,11 @@ import { PassportRenderer } from '../components/theming/Passport'
 import Tilt from 'react-parallax-tilt'
 import { StreamCard } from '../components/Stream/Card'
 import { ConcurrentWordmark } from '../components/theming/ConcurrentWordmark'
+import { useTranslation } from 'react-i18next'
 
 export default function Welcome(): JSX.Element {
     const [themeName, setThemeName] = usePersistent<string>('Theme', 'blue')
-    const [theme, setTheme] = useState<ConcurrentTheme>(createConcurrentTheme(themeName))
+    const [theme, setTheme] = useState<ConcurrentTheme>(loadConcurrentTheme(themeName))
 
     const themes: string[] = Object.keys(Themes)
 
@@ -22,8 +23,10 @@ export default function Welcome(): JSX.Element {
         const box = themes.filter((e) => e !== themeName)
         const newThemeName = box[Math.floor(Math.random() * box.length)]
         setThemeName(newThemeName)
-        setTheme(createConcurrentTheme(newThemeName))
+        setTheme(loadConcurrentTheme(newThemeName))
     }
+
+    const { t } = useTranslation('', { keyPrefix: 'welcome' })
 
     return (
         <ThemeProvider theme={theme}>
@@ -57,28 +60,23 @@ export default function Welcome(): JSX.Element {
                             gap: '10px'
                         }}
                     >
-                        <Button variant="contained" onClick={randomTheme}>
-                            ✨
-                        </Button>
+                        <Button onClick={randomTheme}>✨</Button>
 
-                        <Button variant="contained" component={NavLink} to="/import">
-                            インポート
+                        <Button component={NavLink} to="/import">
+                            {t('import')}
                         </Button>
                     </Box>
                 </Box>
                 <Box /* top */ display="flex" flexDirection={{ xs: 'column', sm: 'column', md: 'row' }} gap={2}>
                     <Box flex={1}>
                         <Typography variant="h1" fontSize="50px">
-                            世界は1つ。
+                            {t('tagline1')}
                         </Typography>
                         <Typography variant="h1" fontSize="50px" gutterBottom>
-                            環境は無数。
+                            {t('tagline2')}
                         </Typography>
-                        <Typography>
-                            Concurrentは1つのアカウントで無数のサーバーとつながれる、新しい分散型SNSです。
-                        </Typography>
+                        <Typography>{t('description')}</Typography>
                         <Button
-                            variant="contained"
                             component={NavLink}
                             to="/register"
                             sx={{
@@ -86,34 +84,23 @@ export default function Welcome(): JSX.Element {
                                 width: '100%'
                             }}
                         >
-                            アカウントを作成
+                            {t('createAccount')}
                         </Button>
                         <Box pt={2}>
                             <Typography gutterBottom variant="h3">
-                                Concurrentは現在開発中のソフトウェアです。
+                                {t('wip.title')}
                             </Typography>
-                            <Typography>
-                                絶賛機能追加途中で現在はまだたくさんの機能は使えません。観光程度に遊んでもらえると嬉しいです！
-                            </Typography>
-                            <Typography>
-                                バグを見つけたり、いいアイディアを思いついたら
-                                <Link href="https://github.com/totegamma/concurrent-web/issues/new/choose">
-                                    GithubからIssue
-                                </Link>
-                                を建てて今すぐ開発に参加しよう！
-                            </Typography>
+                            <Typography>{t('wip.description')}</Typography>
+                            <Typography>{t('wip.contribute')}</Typography>
 
                             <Typography gutterBottom variant="h3" mt={1}>
-                                開発予定の機能
+                                {t('wip.milestones.title')}
                             </Typography>
-                            <Typography>- メンション</Typography>
-                            <Typography>- Activitypubアカウントのフォロー</Typography>
-                            <Typography>- メディア専用投稿・ユーザーのメディア一覧</Typography>
-                            <Typography>- ミュートなどの各種フィルタリング</Typography>
-                            <Typography>- ネイティブのメディアサーバーオプション</Typography>
-                            <Typography>- URLのプレビューカードの表示</Typography>
-                            <Typography>- 他のユーザーのアクティビティのタイムライン</Typography>
-                            <Typography>- etc...</Typography>
+                            <Typography>{t('wip.milestones.item1')}</Typography>
+                            <Typography>{t('wip.milestones.item2')}</Typography>
+                            <Typography>{t('wip.milestones.item3')}</Typography>
+                            <Typography>{t('wip.milestones.item4')}</Typography>
+                            <Typography>{t('wip.milestones.item5')}</Typography>
                         </Box>
                     </Box>
 
@@ -148,73 +135,42 @@ export default function Welcome(): JSX.Element {
 
                     <Box flex={1}>
                         <Typography gutterBottom variant="h1">
-                            もうサーバーごとにアカウントを作る必要はありません
+                            {t('feature1.title')}
                         </Typography>
-                        <Typography>
-                            従来の分散型SNSは、サーバーごとにアカウントを作る必要がありました。
-                            Concurrentは秘密鍵を使って、1つのアカウントで無数のサーバーに対して自己を証明できます。
-                        </Typography>
+                        <Typography>{t('feature1.description')}</Typography>
                     </Box>
                 </Box>
 
                 <Box /* column */ display="flex" flexDirection={{ xs: 'column', sm: 'column', md: 'row' }} gap={2}>
                     <Box flex={1}>
                         <Typography gutterBottom variant="h1">
-                            話題ごとのタイムライン
+                            {t('feature2.title')}
                         </Typography>
-                        <Typography>
-                            Concurrentは「ストリーム」と呼ばれる、コミュニティタイムラインを自由に作成できます。
-                            従来SNSの、「このアカウントのフォロワーにこういう話をするのはちょっと・・・」という気持ちから複数アカウントを切り替える煩雑さからオサラバ。
-                            好きな話題を、ふわさしいストリームで興味のある人同士で集まって盛り上がりましょう。
-                        </Typography>
+                        <Typography>{t('feature2.description')}</Typography>
                     </Box>
                     <Box display="flex" flexDirection="column" flex={1} gap={1}>
                         <StreamCard
-                            stream={{
-                                stream: {
-                                    name: 'Arrival Lounge',
-                                    shortname: 'concurrent',
-                                    description:
-                                        'hub.concurrent.worldサーバーへようこそ！わからない事があれば、ここで呟いてみましょう。',
-                                    banner: 'https://cdn.discordapp.com/attachments/812107435833294868/1138120758493708348/image.png',
-                                    id: 'ci8qvhep9dcpltmfq3fg@hub.concurrent.world',
-                                    schema: '',
-                                    author: '',
-                                    maintainer: [],
-                                    writer: [],
-                                    reader: [],
-                                    cdate: new Date()
-                                },
-                                domain: 'hub.concurrent.world'
-                            }}
+                            streamID="ci8qvhep9dcpltmfq3fg@hub.concurrent.world"
+                            name="Arrival Lounge"
+                            description="hub.concurrent.worldサーバーへようこそ！わからない事があれば、ここで呟いてみましょう。"
+                            banner="https://cdn.discordapp.com/attachments/812107435833294868/1138120758493708348/image.png"
+                            domain="hub.concurrent.world"
                         />
                         <StreamCard
-                            stream={{
-                                stream: {
-                                    name: 'Dev Central',
-                                    shortname: 'dev',
-                                    description: '開発者の憩い場',
-                                    banner: 'https://cdn.discordapp.com/attachments/812107435833294868/1138082112646418463/IMG_1983.jpg',
-                                    id: 'chrmsgep9dcl7anfkgcg@dev.concurrent.world',
-                                    schema: '',
-                                    author: '',
-                                    maintainer: [],
-                                    writer: [],
-                                    reader: [],
-                                    cdate: new Date()
-                                },
-                                domain: 'dev.concurrent.world'
-                            }}
+                            streamID="chrmsgep9dcl7anfkgcg@dev.concurrent.world"
+                            name="Dev Central"
+                            description="開発者の憩い場"
+                            banner="https://cdn.discordapp.com/attachments/812107435833294868/1138082112646418463/IMG_1983.jpg"
+                            domain="dev.concurrent.world"
                         />
                     </Box>
                 </Box>
 
                 <Box display="flex" flexDirection="column" alignItems="center">
                     <Typography gutterBottom variant="h1">
-                        さあ、始めよう
+                        {t('gettingStarted')}
                     </Typography>
                     <Button
-                        variant="contained"
                         component={NavLink}
                         to="/register"
                         sx={{
@@ -222,7 +178,7 @@ export default function Welcome(): JSX.Element {
                             width: '100%'
                         }}
                     >
-                        アカウントを作成
+                        {t('createAccount')}
                     </Button>
                 </Box>
 

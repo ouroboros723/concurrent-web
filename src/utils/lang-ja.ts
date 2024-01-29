@@ -1,11 +1,4 @@
-import {
-    Wordlist,
-    assertArgument,
-    id,
-    hexlify,
-    toUtf8Bytes,
-    toUtf8String
-} from 'ethers'
+import { Wordlist, assertArgument, id, hexlify, toUtf8Bytes, toUtf8String } from 'ethers'
 
 const data = [
     // 4-kana words
@@ -31,8 +24,7 @@ const data = [
 ]
 
 // Maps each character into its kana value (the index)
-const mapping =
-    '~~AzB~X~a~KN~Q~D~S~C~G~E~Y~p~L~I~O~eH~g~V~hxyumi~~U~~Z~~v~~s~~dkoblPjfnqwMcRTr~W~~~F~~~~~Jt'
+const mapping = '~~AzB~X~a~KN~Q~D~S~C~G~E~Y~p~L~I~O~eH~g~V~hxyumi~~U~~Z~~v~~s~~dkoblPjfnqwMcRTr~W~~~F~~~~~Jt'
 
 let _wordlist: null | string[] = null
 
@@ -131,10 +123,7 @@ function loadWords(): string[] {
     /* istanbul ignore if */
     const checksum = id(wordlist.join('\n') + '\n')
     /* c8 ignore start */
-    if (
-        checksum !==
-        '0xcb36b09e6baa935787fd762ce65e80b0c6a8dabdfbc3a7f86ac0e2c4fd111600'
-    ) {
+    if (checksum !== '0xcb36b09e6baa935787fd762ce65e80b0c6a8dabdfbc3a7f86ac0e2c4fd111600') {
         throw new Error('BIP39 Wordlist for ja (Japanese) FAILED')
     }
     /* c8 ignore stop */
@@ -166,12 +155,7 @@ export class LangJa extends Wordlist {
 
     getWord(index: number): string {
         const words = loadWords()
-        assertArgument(
-            index >= 0 && index < words.length,
-            `invalid word index: ${index}`,
-            'index',
-            index
-        )
+        assertArgument(index >= 0 && index < words.length, `invalid word index: ${index}`, 'index', index)
         return words[index]
     }
 
