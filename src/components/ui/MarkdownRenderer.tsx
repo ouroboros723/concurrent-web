@@ -1,5 +1,5 @@
-import { type ImgHTMLAttributes, type DetailedHTMLProps } from 'react'
-import { Box, Button, IconButton, Link, Typography } from '@mui/material'
+import { type ImgHTMLAttributes, type DetailedHTMLProps, memo } from 'react'
+import { Box, Button, Divider, IconButton, Link, Tooltip, Typography } from '@mui/material'
 import { ReactMarkdown } from 'react-markdown/lib/react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -16,6 +16,9 @@ import { ThemeCard } from '../ThemeCard'
 import { closeSnackbar, useSnackbar } from 'notistack'
 import { usePreference } from '../../context/PreferenceContext'
 import DownloadForOfflineIcon from '@mui/icons-material/DownloadForOffline'
+import { EmojipackCard } from '../EmojipackCard'
+import ManageSearchIcon from '@mui/icons-material/ManageSearch'
+import { useGlobalActions } from '../../context/GlobalActions'
 
 export interface MarkdownRendererProps {
     messagebody: string
@@ -24,7 +27,16 @@ export interface MarkdownRendererProps {
 
 const sanitizeOption = {
     ...defaultSchema,
-    tagNames: [...(defaultSchema.tagNames ?? []), 'marquee', 'video', 'source', 'userlink', 'emoji', 'social'],
+    tagNames: [
+        ...(defaultSchema.tagNames ?? []),
+        'marquee',
+        'video',
+        'source',
+        'userlink',
+        'emoji',
+        'social',
+        'emojipack'
+    ],
     attributes: {
         ...defaultSchema.attributes,
         marquee: [...(defaultSchema.attributes?.marquee ?? []), 'direction', 'behavior', 'scrollamount'],
@@ -32,11 +44,13 @@ const sanitizeOption = {
         source: [...(defaultSchema.attributes?.source ?? []), 'src', 'type'],
         userlink: ['ccid'],
         emoji: ['shortcode'],
-        social: ['href', 'service', 'icon']
+        social: ['href', 'service', 'icon'],
+        emojipack: ['src']
     }
 }
 
-export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
+export const MarkdownRenderer = memo<MarkdownRendererProps>((props: MarkdownRendererProps): JSX.Element => {
+    const actions = useGlobalActions()
     const { enqueueSnackbar } = useSnackbar()
     const [themeName, setThemeName] = usePreference('themeName')
     const [customThemes, setCustomThemes] = usePreference('customThemes')
@@ -210,21 +224,101 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
                         </blockquote>
                     ),
                     a: ({ children, href }) => {
-                        if (href?.endsWith('.wav') || href?.endsWith('.mp3')) {
+                        const matchTwitter = href?.match(/https:\/\/twitter\.com\/(\w+)\/?$/)
+                        if (matchTwitter) {
                             return (
-                                <audio controls src={href}>
-                                    <Link href={href} target="_blank">
-                                        {children}
-                                    </Link>
-                                </audio>
-                            )
-                        } else {
-                            return (
-                                <Link href={href} target="_blank" color="secondary" underline="hover">
-                                    {children}
-                                </Link>
+                                <LinkChip service="twitter" href={href}>
+                                    {matchTwitter[1]}
+                                </LinkChip>
                             )
                         }
+                        const matchX = href?.match(/https:\/\/x\.com\/(\w+)\/?$/)
+                        if (matchX) {
+                            return (
+                                <LinkChip service="x" href={href}>
+                                    {matchX[1]}
+                                </LinkChip>
+                            )
+                        }
+                        const matchYoutube = href?.match(/https:\/\/www\.youtube\.com\/@(\w+)\/?$/)
+                        if (matchYoutube) {
+                            return (
+                                <LinkChip service="youtube" href={href}>
+                                    {matchYoutube[1]}
+                                </LinkChip>
+                            )
+                        }
+                        const matchGithub = href?.match(/https:\/\/github\.com\/(\w+)\/?$/)
+                        if (matchGithub) {
+                            return (
+                                <LinkChip service="github" href={href}>
+                                    {matchGithub[1]}
+                                </LinkChip>
+                            )
+                        }
+                        const matchSoundcloud = href?.match(/https:\/\/soundcloud\.com\/(\w+)\/?$/)
+                        if (matchSoundcloud) {
+                            return (
+                                <LinkChip service="soundcloud" href={href}>
+                                    {matchSoundcloud[1]}
+                                </LinkChip>
+                            )
+                        }
+                        const matchInstagram = href?.match(/https:\/\/www\.instagram\.com\/(\w+)\/?$/)
+                        if (matchInstagram) {
+                            return (
+                                <LinkChip service="instagram" href={href}>
+                                    {matchInstagram[1]}
+                                </LinkChip>
+                            )
+                        }
+                        const matchTwitch = href?.match(/https:\/\/www\.twitch\.tv\/(\w+)\/?$/)
+                        if (matchTwitch) {
+                            return (
+                                <LinkChip service="twitch" href={href}>
+                                    {matchTwitch[1]}
+                                </LinkChip>
+                            )
+                        }
+                        const matchBandcamp = href?.match(/https:\/\/(\w+)\.bandcamp\.com\/?$/)
+                        if (matchBandcamp) {
+                            return (
+                                <LinkChip service="bandcamp" href={href}>
+                                    {matchBandcamp[1]}
+                                </LinkChip>
+                            )
+                        }
+                        const matchYoutubeVideo = href?.match(/https:\/\/www\.youtube\.com\/watch\?v=(\w+)$/)
+                        if (matchYoutubeVideo) {
+                            return (
+                                <Box
+                                    sx={{
+                                        aspectRatio: '16 / 9',
+                                        overflow: 'hidden',
+                                        width: '100%',
+                                        borderRadius: 1,
+                                        maxWidth: '500px'
+                                    }}
+                                >
+                                    <iframe
+                                        allowFullScreen
+                                        src={`https://www.youtube.com/embed/${matchYoutubeVideo[1]}`}
+                                        title="YouTube video player"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            border: 'none'
+                                        }}
+                                    />
+                                </Box>
+                            )
+                        }
+                        return (
+                            <Link href={href} target="_blank" color="secondary" underline="hover">
+                                {children}
+                            </Link>
+                        )
                     },
                     code: ({ node, children, inline }) => {
                         const language = node.position
@@ -303,30 +397,50 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
                             ReactMarkdownProps
                     ) => {
                         return (
-                            <a href={props.src} target="_blank" rel="noreferrer">
-                                <Box
-                                    {...props}
-                                    component="img"
-                                    maxWidth="100%"
-                                    borderRadius={1}
-                                    sx={{
-                                        maxHeight: '20vh'
-                                    }}
-                                />
-                            </a>
+                            <Box
+                                {...props}
+                                component="img"
+                                maxWidth="100%"
+                                borderRadius={1}
+                                sx={{
+                                    maxHeight: '20vh'
+                                }}
+                                onClick={() => {
+                                    actions.openImageViewer(props.src ?? '')
+                                }}
+                            />
                         )
                     },
                     emoji: ({ shortcode }) => {
                         const emoji = props.emojiDict[shortcode]
                         return emoji ? (
-                            <img
-                                src={emoji?.animURL ?? emoji?.imageURL ?? ''}
-                                style={{
-                                    height: '1.25em',
-                                    verticalAlign: '-0.45em',
-                                    marginBottom: '4px'
-                                }}
-                            />
+                            <Tooltip
+                                arrow
+                                placement="top"
+                                title={
+                                    <Box display="flex" flexDirection="column" alignItems="center">
+                                        <img
+                                            src={emoji?.animURL ?? emoji?.imageURL ?? ''}
+                                            style={{
+                                                height: '5em'
+                                            }}
+                                        />
+                                        <Divider />
+                                        <Typography variant="caption" align="center">
+                                            {shortcode}
+                                        </Typography>
+                                    </Box>
+                                }
+                            >
+                                <img
+                                    src={emoji?.animURL ?? emoji?.imageURL ?? ''}
+                                    style={{
+                                        height: '1.25em',
+                                        verticalAlign: '-0.45em',
+                                        marginBottom: '4px'
+                                    }}
+                                />
+                            </Tooltip>
                         ) : (
                             <span>:{shortcode}:</span>
                         )
@@ -345,6 +459,9 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
                                 preload="metadata"
                             />
                         )
+                    },
+                    emojipack: ({ src }) => {
+                        return <EmojipackCard src={src} icon={<ManageSearchIcon />} onClick={actions.openEmojipack} />
                     }
                 }}
             >
@@ -352,4 +469,6 @@ export function MarkdownRenderer(props: MarkdownRendererProps): JSX.Element {
             </ReactMarkdown>
         </Box>
     )
-}
+})
+
+MarkdownRenderer.displayName = 'MarkdownRenderer'
