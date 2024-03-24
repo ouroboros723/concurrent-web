@@ -7,7 +7,7 @@ import {
     type ReplyMessageSchema,
     type SimpleNoteSchema
 } from '@concurrent-world/client'
-import { useApi } from '../../context/api'
+import { useClient } from '../../context/ClientContext'
 import { MessageView } from './MessageView'
 import { OneLineMessageView } from './OneLineMessageView'
 import { useEffect, useState } from 'react'
@@ -16,13 +16,13 @@ import { CCUserChip } from '../ui/CCUserChip'
 export interface ReplyMessageFrameProp {
     message: Message<ReplyMessageSchema>
     lastUpdated?: number
-    userCCID: string
+    userCCID?: string
     rerouted?: Message<RerouteMessageSchema>
     simple?: boolean
 }
 
 export const ReplyMessageFrame = (props: ReplyMessageFrameProp): JSX.Element => {
-    const client = useApi()
+    const { client } = useClient()
 
     const [replyTo, setReplyTo] = useState<Message<SimpleNoteSchema | ReplyMessageSchema> | null>()
 

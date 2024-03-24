@@ -1,7 +1,6 @@
 import { Box, Divider, ListItem, ListItemIcon, ListItemText, type SxProps, Typography, useTheme } from '@mui/material'
 import React, { memo, useCallback, useEffect, useState, useRef, forwardRef, type ForwardedRef, useMemo } from 'react'
 import { AssociationFrame } from '../Association/AssociationFrame'
-import { useApi } from '../../context/api'
 import { Loading } from '../ui/Loading'
 import { MessageContainer } from '../Message/MessageContainer'
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary'
@@ -13,6 +12,7 @@ import { useRefWithForceUpdate } from '../../hooks/useRefWithForceUpdate'
 import useSound from 'use-sound'
 import { usePreference } from '../../context/PreferenceContext'
 import { VList, type VListHandle } from 'virtua'
+import { useClient } from '../../context/ClientContext'
 
 export interface TimelineProps {
     streams: string[]
@@ -26,7 +26,7 @@ const PTR_HEIGHT = 60
 const divider = <Divider variant="inset" component="li" sx={{ mx: 1, mt: 1 }} />
 
 const timeline = forwardRef((props: TimelineProps, ref: ForwardedRef<VListHandle>): JSX.Element => {
-    const client = useApi()
+    const { client } = useClient()
     const theme = useTheme()
     const [sound] = usePreference('sound')
 
@@ -272,6 +272,7 @@ const timeline = forwardRef((props: TimelineProps, ref: ForwardedRef<VListHandle
                                                 sx={timelineElemSx}
                                                 messageID={e.objectID}
                                                 messageOwner={e.owner}
+                                                resolveHint={e.streamID.split('@')[1]}
                                                 lastUpdated={e.lastUpdate?.getTime() ?? 0}
                                                 after={divider}
                                                 timestamp={e.cdate}

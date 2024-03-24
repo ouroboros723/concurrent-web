@@ -1,5 +1,5 @@
-import { useEffect, useState, createContext, useRef, useMemo, useCallback } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect, useState, useRef, useMemo } from 'react'
+import { Routes, Route, Link as RouterLink } from 'react-router-dom'
 import { darken, Box, Paper, ThemeProvider, CssBaseline, Typography, useMediaQuery } from '@mui/material'
 import { SnackbarProvider, enqueueSnackbar } from 'notistack'
 
@@ -20,7 +20,7 @@ import {
 
 import useSound from 'use-sound'
 import { MobileMenu } from './components/Menu/MobileMenu'
-import { useApi } from './context/api'
+import { useClient } from './context/ClientContext'
 import { GlobalActionsProvider } from './context/GlobalActions'
 import { EmojiPickerProvider } from './context/EmojiPickerContext'
 
@@ -35,48 +35,28 @@ import {
     Schemas,
     type Subscription,
     type ProfileSchema,
-    type User,
     type Association,
     type ReplyAssociationSchema
 } from '@concurrent-world/client'
 import { UrlSummaryProvider } from './context/urlSummaryContext'
 import { StorageProvider } from './context/StorageContext'
 import { MarkdownRendererLite } from './components/ui/MarkdownRendererLite'
-
-export const ApplicationContext = createContext<appData>({
-    displayingStream: [],
-    acklist: [],
-    updateAcklist: () => {}
-})
-
-export interface appData {
-    displayingStream: string[]
-    acklist: User[]
-    updateAcklist: () => void
-}
+import { useTranslation } from 'react-i18next'
 
 function App(): JSX.Element {
-    const client = useApi()
+    const { client } = useClient()
     const [themeName] = usePreference('themeName')
-    const [lists] = usePreference('lists')
     const [sound] = usePreference('sound')
     const [customThemes] = usePreference('customThemes')
 
     const [theme, setTheme] = useState<ConcurrentTheme>(loadConcurrentTheme(themeName, customThemes))
     const isMobileSize = useMediaQuery(theme.breakpoints.down('sm'))
 
-    const [acklist, setAcklist] = useState<User[]>([])
-    const updateAcklist = useCallback(() => {
-        client.user?.getAcking().then((acklist) => {
-            setAcklist(acklist)
-        })
-    }, [client, client?.user])
-
-    useEffect(() => {
-        updateAcklist()
-    }, [client, client?.user])
+    const mnemonic = JSON.parse(localStorage.getItem('Mnemonic') || 'null')
 
     const subscription = useRef<Subscription>()
+
+    const { t } = useTranslation()
 
     useEffect(() => {
         if (!client) return
@@ -102,10 +82,11 @@ function App(): JSX.Element {
                             m &&
                                 client?.api.getCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
                                     playNotificationRef.current()
+                                    const profile = c?.[0].payload.body
                                     enqueueSnackbar(
                                         <Box display="flex" flexDirection="column">
                                             <Typography>
-                                                {c?.payload.body.username ?? 'anonymous'} replied to your message:{' '}
+                                                {profile?.username ?? 'anonymous'} replied to your message:{' '}
                                             </Typography>
                                             <MarkdownRendererLite
                                                 messagebody={m.payload.body.body as string}
@@ -124,10 +105,11 @@ function App(): JSX.Element {
                         m &&
                             client?.api.getCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
                                 playNotificationRef.current()
+                                const profile = c?.[0].payload.body
                                 enqueueSnackbar(
                                     <Box display="flex" flexDirection="column">
                                         <Typography>
-                                            {c?.payload.body.username ?? 'anonymous'} rerouted to your message:{' '}
+                                            {profile?.username ?? 'anonymous'} rerouted to your message:{' '}
                                         </Typography>
                                         <MarkdownRendererLite
                                             messagebody={m.payload.body.body as string}
@@ -146,9 +128,10 @@ function App(): JSX.Element {
                         m &&
                             client.api.getCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
                                 playNotificationRef.current()
+                                const profile = c?.[0].payload.body
                                 enqueueSnackbar(
                                     <Box display="flex" flexDirection="column">
-                                        <Typography>{c?.payload.body.username ?? 'anonymous'} favorited</Typography>
+                                        <Typography>{profile?.username ?? 'anonymous'} favorited</Typography>
                                         <MarkdownRendererLite
                                             messagebody={m.payload.body.body as string}
                                             emojiDict={m.payload.body.emojis ?? {}}
@@ -167,10 +150,11 @@ function App(): JSX.Element {
                         m &&
                             client.api.getCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
                                 playNotificationRef.current()
+                                const profile = c?.[0].payload.body
                                 enqueueSnackbar(
                                     <Box display="flex" flexDirection="column">
                                         <Typography>
-                                            {c?.payload.body.username ?? 'anonymous'} reacted{' '}
+                                            {profile?.username ?? 'anonymous'} reacted{' '}
                                             <img src={a.payload.body.imageUrl as string} style={{ height: '1em' }} />
                                         </Typography>
                                         <MarkdownRendererLite
@@ -189,9 +173,10 @@ function App(): JSX.Element {
                         m &&
                             client.api.getCharacter<ProfileSchema>(a.author, Schemas.profile).then((c) => {
                                 playNotificationRef.current()
+                                const profile = c?.[0].payload.body
                                 enqueueSnackbar(
                                     <Box display="flex" flexDirection="column">
-                                        {c?.payload.body.username ?? 'anonymous'} mentioned you:{' '}
+                                        {profile?.username ?? 'anonymous'} mentioned you:{' '}
                                         <MarkdownRendererLite
                                             messagebody={m.payload.body.body as string}
                                             emojiDict={m.payload.body.emojis ?? {}}
@@ -205,36 +190,6 @@ function App(): JSX.Element {
             })
         })
     }, [client])
-
-    const path = useLocation()
-    const displayingStream: string[] = useMemo(() => {
-        switch (path.pathname) {
-            case '/': {
-                const rawid = path.hash.replace('#', '')
-                const list = lists[rawid] ?? Object.values(lists)[0]
-                if (!list) return []
-                console.log(list)
-                return [...list.streams, list.userStreams.map((e) => e.streamID)].flat()
-            }
-            case '/stream':
-            case '/stream/': {
-                return path.hash.replace('#', '').split(',')
-            }
-            case '/notifications': {
-                const notifications = client?.user?.userstreams?.payload.body.notificationStream
-                if (!notifications) return []
-                return [notifications]
-            }
-            case '/associations': {
-                const associations = client?.user?.userstreams?.payload.body.associationStream
-                if (!associations) return []
-                return [associations]
-            }
-            default: {
-                return []
-            }
-        }
-    }, [client, path])
 
     const [playNotification] = useSound(sound.notification, { volume: sound.volume / 100 })
     const playNotificationRef = useRef(playNotification)
@@ -254,14 +209,6 @@ function App(): JSX.Element {
         themeColorMetaTag.content = newtheme.palette.background.default
     }, [themeName, customThemes])
 
-    const applicationContext = useMemo(() => {
-        return {
-            displayingStream,
-            acklist,
-            updateAcklist
-        }
-    }, [displayingStream, acklist, updateAcklist])
-
     if (!client) {
         return <>building api service...</>
     }
@@ -274,15 +221,13 @@ function App(): JSX.Element {
             <ThemeProvider theme={theme}>
                 <CssBaseline />
                 <TickerProvider>
-                    <ApplicationContext.Provider value={applicationContext}>
-                        <UrlSummaryProvider host={client.host}>
-                            <EmojiPickerProvider>
-                                <StorageProvider>
-                                    <GlobalActionsProvider>{childs}</GlobalActionsProvider>
-                                </StorageProvider>
-                            </EmojiPickerProvider>
-                        </UrlSummaryProvider>
-                    </ApplicationContext.Provider>
+                    <UrlSummaryProvider host={client.host}>
+                        <EmojiPickerProvider>
+                            <StorageProvider>
+                                <GlobalActionsProvider>{childs}</GlobalActionsProvider>
+                            </StorageProvider>
+                        </EmojiPickerProvider>
+                    </UrlSummaryProvider>
                 </TickerProvider>
             </ThemeProvider>
         </SnackbarProvider>
@@ -293,7 +238,8 @@ function App(): JSX.Element {
             <Box
                 sx={{
                     display: 'flex',
-                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    alignItems: 'center',
                     background: `${theme.palette.background.default}, 
                                  linear-gradient(${theme.palette.background.default}, ${darken(
                         theme.palette.background.default,
@@ -306,10 +252,35 @@ function App(): JSX.Element {
             >
                 <Box
                     sx={{
+                        backgroundColor: 'error.main',
+                        width: '100%',
+                        display: 'flex',
+                        justifyContent: 'center'
+                    }}
+                >
+                    {mnemonic && (
+                        <Typography
+                            sx={{
+                                textAlign: 'center',
+                                color: 'error.contrastText',
+                                fontSize: '0.8em',
+                                fontWeight: 'bold',
+                                padding: '10px'
+                            }}
+                            component={RouterLink}
+                            to="/settings/identity"
+                        >
+                            {t('settings.identity.loginType.masterKey')}
+                        </Typography>
+                    )}
+                </Box>
+                <Box
+                    sx={{
                         display: 'flex',
                         flex: 1,
                         maxWidth: '1280px',
                         width: '100%',
+                        height: '100%',
                         marginLeft: 'env(safe-area-inset-left)',
                         marginRight: 'env(safe-area-inset-right)'
                     }}
@@ -362,10 +333,10 @@ function App(): JSX.Element {
                         >
                             <Routes>
                                 <Route index element={<ListPage />} />
-                                <Route path="/stream" element={<StreamPage />} />
+                                <Route path="/stream/:id" element={<StreamPage />} />
                                 <Route path="/associations" element={<Associations />} />
                                 <Route path="/contacts" element={<ContactsPage />} />
-                                <Route path="/explorer" element={<Explorer />} />
+                                <Route path="/explorer/:tab" element={<Explorer />} />
                                 <Route path="/notifications" element={<Notifications />} />
                                 <Route path="/settings/*" element={<Settings />} />
                                 <Route path="/message/:id" element={<MessagePage />} />
@@ -377,7 +348,8 @@ function App(): JSX.Element {
                             sx={{
                                 display: {
                                     xs: 'block',
-                                    sm: 'none'
+                                    sm: 'none',
+                                    md: 'none'
                                 }
                             }}
                         >

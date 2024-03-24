@@ -1,7 +1,7 @@
 import { Typography, Box, ButtonBase, Button, Paper } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { CCAvatar } from '../ui/CCAvatar'
-import { useApi } from '../../context/api'
+import { useClient } from '../../context/ClientContext'
 import SettingsIcon from '@mui/icons-material/Settings'
 import PaletteIcon from '@mui/icons-material/Palette'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
@@ -9,13 +9,15 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp'
 import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions'
 import PhotoIcon from '@mui/icons-material/Photo'
 import SettingsEthernetIcon from '@mui/icons-material/SettingsEthernet'
+import BadgeIcon from '@mui/icons-material/Badge'
+import QrCodeIcon from '@mui/icons-material/QrCode'
 import { useSnackbar } from 'notistack'
 import { LogoutButton } from './LogoutButton'
 import { IconButtonWithLabel } from '../ui/IconButtonWithLabel'
 import { useTranslation } from 'react-i18next'
 
 export function SettingsIndex(): JSX.Element {
-    const client = useApi()
+    const { client } = useClient()
     const { enqueueSnackbar } = useSnackbar()
 
     const { t } = useTranslation('', { keyPrefix: '' })
@@ -104,6 +106,12 @@ export function SettingsIndex(): JSX.Element {
                     label={t('settings.profile.title')}
                     to="/settings/profile"
                 />
+                <IconButtonWithLabel
+                    link
+                    icon={BadgeIcon}
+                    label={t('settings.identity.title')}
+                    to="/settings/identity"
+                />
                 <IconButtonWithLabel link icon={PaletteIcon} label={t('settings.theme.title')} to="/settings/theme" />
                 <IconButtonWithLabel link icon={VolumeUpIcon} label={t('settings.sound.title')} to="/settings/sound" />
                 <IconButtonWithLabel
@@ -119,6 +127,7 @@ export function SettingsIndex(): JSX.Element {
                     label={t('settings.ap.title')}
                     to="/settings/activitypub"
                 />
+                <IconButtonWithLabel link icon={QrCodeIcon} label={t('settings.qr.title')} to="/settings/loginqr" />
             </Paper>
             <Paper
                 variant="outlined"

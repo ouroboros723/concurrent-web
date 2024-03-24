@@ -1,5 +1,5 @@
-import { Divider, Box, Breadcrumbs, Link } from '@mui/material'
-import { Route, Routes, useLocation, Link as RouterLink } from 'react-router-dom'
+import { Divider, Box } from '@mui/material'
+import { Route, Routes } from 'react-router-dom'
 import { SettingsIndex } from '../components/Settings/Index'
 import { GeneralSettings } from '../components/Settings/General'
 import { ProfileSettings } from '../components/Settings/Profile'
@@ -7,14 +7,25 @@ import { ThemeSettings } from '../components/Settings/Theme'
 import { SoundSettings } from '../components/Settings/Sound'
 import { EmojiSettings } from '../components/Settings/Emoji'
 import { MediaSettings } from '../components/Settings/Media'
+import { LoginQR } from '../components/Settings/LoginQR'
 import { APSettings } from '../components/Settings/APSettings'
-import { useTranslation } from 'react-i18next'
+import { IdentitySettings } from '../components/Settings/Identity'
+import { BreadcrumbList } from '../components/ui/BreadcrumbList'
+
+const pathTitles: Record<string, string> = {
+    '/settings': 'settings.title',
+    '/settings/general': 'settings.general.title',
+    '/settings/profile': 'settings.profile.title',
+    '/settings/identity': 'settings.identity.title',
+    '/settings/theme': 'settings.theme.title',
+    '/settings/sound': 'settings.sound.title',
+    '/settings/emoji': 'settings.emoji.title',
+    '/settings/media': 'settings.media.title',
+    '/settings/activitypub': 'settings.ap.title',
+    '/settings/loginqr': 'settings.qr.title'
+}
 
 export function Settings(): JSX.Element {
-    const path = useLocation()
-
-    const { t } = useTranslation('', { keyPrefix: 'pages.settings' })
-
     return (
         <Box
             sx={{
@@ -27,36 +38,19 @@ export function Settings(): JSX.Element {
                 overflowY: 'scroll'
             }}
         >
-            <Breadcrumbs>
-                <Link variant="h2" component={RouterLink} underline="hover" color="text.primary" to="/settings">
-                    {t('title')}
-                </Link>
-                {path.pathname !== '/settings' && (
-                    <Link
-                        variant="h2"
-                        underline="hover"
-                        color="inherit"
-                        to={path.pathname}
-                        component={RouterLink}
-                        sx={{
-                            textTransform: 'capitalize',
-                            color: 'text.primary'
-                        }}
-                    >
-                        {path.pathname.split('/')[2]}
-                    </Link>
-                )}
-            </Breadcrumbs>
+            <BreadcrumbList pathTitles={pathTitles} />
             <Divider />
             <Routes>
                 <Route path="/" element={<SettingsIndex />} />
                 <Route path="/general" element={<GeneralSettings />} />
                 <Route path="/profile" element={<ProfileSettings />} />
+                <Route path="/identity" element={<IdentitySettings />} />
                 <Route path="/theme" element={<ThemeSettings />} />
                 <Route path="/sound" element={<SoundSettings />} />
                 <Route path="/emoji" element={<EmojiSettings />} />
                 <Route path="/media" element={<MediaSettings />} />
                 <Route path="/activitypub" element={<APSettings />} />
+                <Route path="/loginqr" element={<LoginQR />} />
             </Routes>
         </Box>
     )

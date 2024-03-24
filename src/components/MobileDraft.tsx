@@ -23,13 +23,12 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EmojiEmotions from '@mui/icons-material/EmojiEmotions'
 import { useEmojiPicker } from '../context/EmojiPickerContext'
 import { type CommonstreamSchema, type Stream, type User, type CreateCurrentOptions } from '@concurrent-world/client'
-import { useApi } from '../context/api'
+import { useClient } from '../context/ClientContext'
 import { type Emoji, type EmojiLite } from '../model'
 import { useNavigate } from 'react-router-dom'
 
 import { useTranslation } from 'react-i18next'
 
-import { ApplicationContext } from '../App'
 import { useStorage } from '../context/StorageContext'
 import { DummyMessageView } from './Message/DummyMessageView'
 
@@ -43,12 +42,12 @@ export interface MobileDraftProps {
     placeholder?: string
     value?: string
     context?: JSX.Element
+    defaultPostHome?: boolean
 }
 
 export const MobileDraft = memo<MobileDraftProps>((props: MobileDraftProps): JSX.Element => {
-    const client = useApi()
+    const { client } = useClient()
     const theme = useTheme()
-    const { acklist } = useContext(ApplicationContext)
     const emojiPicker = useEmojiPicker()
     const navigate = useNavigate()
     const { uploadFile, isUploadReady } = useStorage()
@@ -60,7 +59,7 @@ export const MobileDraft = memo<MobileDraftProps>((props: MobileDraftProps): JSX
     const textInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const [postHome, setPostHome] = useState<boolean>(true)
+    const [postHome, setPostHome] = useState<boolean>(props.defaultPostHome ?? true)
     const [sending, setSending] = useState<boolean>(false)
 
     const [enableSuggestions, setEnableSuggestions] = useState<boolean>(false)
@@ -132,16 +131,17 @@ export const MobileDraft = memo<MobileDraftProps>((props: MobileDraftProps): JSX
     }
 
     const uploadImage = async (imageFile: File): Promise<void> => {
-        const isImage = imageFile.type.includes('image')
-        if (isImage) {
-            const uploadingText = ' ![uploading...]()'
-            setDraft(draft + uploadingText)
-            const result = await uploadFile(imageFile)
-            if (!result) {
-                setDraft(draft.replace(uploadingText, ''))
-                setDraft(draft + `![upload failed]()`)
+        const uploadingText = ' ![uploading...]()'
+        setDraft(draft + uploadingText)
+        const result = await uploadFile(imageFile)
+        if (!result) {
+            setDraft(draft.replace(uploadingText, ''))
+            setDraft(draft + `![upload failed]()`)
+        } else {
+            setDraft(draft.replace(uploadingText, ''))
+            if (imageFile.type.startsWith('video')) {
+                setDraft(draft + `<video controls><source src="${result}" type="${imageFile.type}"></video>`)
             } else {
-                setDraft(draft.replace(uploadingText, ''))
                 setDraft(draft + `![image](${result})`)
             }
         }
@@ -337,11 +337,10 @@ export const MobileDraft = memo<MobileDraftProps>((props: MobileDraftProps): JSX
                         }
 
                         if (userQuery) {
-                            console.log(acklist, userQuery)
                             setUserSuggestions(
-                                acklist.filter((q) =>
+                                client.ackings?.filter((q) =>
                                     q.profile?.payload.body.username?.toLowerCase()?.includes(userQuery)
-                                )
+                                ) ?? []
                             )
                             setEnableUserPicker(true)
                         }
@@ -540,7 +539,7 @@ export const MobileDraft = memo<MobileDraftProps>((props: MobileDraftProps): JSX
                                     onChange={(e) => {
                                         onFileInputChange(e)
                                     }}
-                                    accept={'.png, .jpg, .jpeg, .gif'}
+                                    accept={'image/*, video/*'}
                                 />
                             </IconButton>
                         </span>

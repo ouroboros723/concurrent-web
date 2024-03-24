@@ -1,34 +1,34 @@
-import { type User } from '@concurrent-world/client'
+import { type CoreCharacter, type ProfileSchema, type User } from '@concurrent-world/client'
 import { Box, Chip, Typography } from '@mui/material'
 import { CCAvatar } from './ui/CCAvatar'
-import { useApi } from '../context/api'
+import { useClient } from '../context/ClientContext'
 import { AckButton } from './AckButton'
-import { FollowButton } from './FollowButton'
 import { useSnackbar } from 'notistack'
 import ContentPasteIcon from '@mui/icons-material/ContentPaste'
 import { MarkdownRenderer } from './ui/MarkdownRenderer'
-import Background from '../resources/defaultbg.png'
+import { CCWallpaper } from './ui/CCWallpaper'
 
 export interface UserProfileCardProps {
-    user: User | undefined
+    user?: User
+    character?: CoreCharacter<ProfileSchema>
 }
 
 export const UserProfileCard = (props: UserProfileCardProps): JSX.Element => {
-    const client = useApi()
+    const { client } = useClient()
     const isSelf = props.user?.ccid === client?.ccid
     const { enqueueSnackbar } = useSnackbar()
 
-    if (!props.user) return <></>
+    const character = props.user?.profile ?? props.character
+
+    if (!character) return <></>
 
     return (
         <Box display="flex" flexDirection="column" maxWidth="500px">
-            <Box
+            <CCWallpaper
                 sx={{
-                    backgroundImage: `url(${props.user.profile?.payload.body.banner || Background})`,
-                    backgroundPosition: 'center',
-                    backgroundSize: 'cover',
                     height: '80px'
                 }}
+                override={character.payload.body.banner}
             />
             <Box position="relative" height={0}>
                 <Box
@@ -39,9 +39,9 @@ export const UserProfileCard = (props: UserProfileCardProps): JSX.Element => {
                     }}
                 >
                     <CCAvatar
-                        alt={props.user.profile?.payload.body.username}
-                        avatarURL={props.user.profile?.payload.body.avatar}
-                        identiconSource={props.user.ccid ?? ''}
+                        alt={character.payload.body.username}
+                        avatarURL={character.payload.body.avatar}
+                        identiconSource={character.author}
                         sx={{
                             width: '60px',
                             height: '60px'
@@ -59,14 +59,9 @@ export const UserProfileCard = (props: UserProfileCardProps): JSX.Element => {
                 px={1}
                 mb={1}
             >
-                {!isSelf && (
+                {!isSelf && props.user && (
                     <>
                         <AckButton user={props.user} />
-                        <FollowButton
-                            userCCID={props.user.ccid}
-                            userStreamID={props.user.userstreams?.payload.body.homeStream ?? ''}
-                            color="primary.main"
-                        />
                     </>
                 )}
             </Box>
@@ -79,10 +74,10 @@ export const UserProfileCard = (props: UserProfileCardProps): JSX.Element => {
                 px={1}
                 mb={1}
             >
-                <Typography variant="h2">{props.user.profile?.payload.body.username}</Typography>
+                <Typography variant="h2">{character.payload.body.username}</Typography>
                 <Chip
                     size="small"
-                    label={`${props.user.ccid.slice(0, 9)}...`}
+                    label={`${character.author.slice(0, 9)}...`}
                     deleteIcon={<ContentPasteIcon />}
                     onDelete={() => {
                         navigator.clipboard.writeText(props.user?.ccid ?? '')
@@ -99,7 +94,7 @@ export const UserProfileCard = (props: UserProfileCardProps): JSX.Element => {
                     mb: 1
                 }}
             >
-                <MarkdownRenderer messagebody={props.user.profile?.payload.body.description ?? ''} emojiDict={{}} />
+                <MarkdownRenderer messagebody={character.payload.body.description ?? ''} emojiDict={{}} />
             </Box>
         </Box>
     )

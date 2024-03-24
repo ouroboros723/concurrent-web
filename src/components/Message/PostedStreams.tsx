@@ -9,9 +9,10 @@ import { Box, Link, Tooltip } from '@mui/material'
 import { useMemo } from 'react'
 
 import { Link as RouterLink } from 'react-router-dom'
-import { useApi } from '../../context/api'
+import { useClient } from '../../context/ClientContext'
 import { CCUserIcon } from '../ui/CCUserIcon'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 
 export interface PostedStreamsProps {
     useUserIcon?: boolean
@@ -19,16 +20,17 @@ export interface PostedStreamsProps {
 }
 
 export const PostedStreams = (props: PostedStreamsProps): JSX.Element => {
-    const client = useApi()
-    const postedStreams = useMemo(
-        () =>
+    const { client } = useClient()
+    const postedStreams = useMemo(() => {
+        const streams =
             props.message.postedStreams?.filter(
                 (stream) =>
                     (stream.schema === Schemas.commonstream && (stream.author === client.ccid || stream.visible)) ||
                     stream.schema === Schemas.utilitystream
-            ) ?? [],
-        [props.message]
-    )
+            ) ?? []
+        const uniq = [...new Set(streams)]
+        return uniq
+    }, [props.message])
 
     return (
         <Box
@@ -40,6 +42,15 @@ export const PostedStreams = (props: PostedStreamsProps): JSX.Element => {
                 ml: 'auto'
             }}
         >
+            {postedStreams.length === 0 && (
+                <HelpOutlineIcon
+                    sx={{
+                        height: '1rem',
+                        width: '1rem',
+                        color: 'text.secondary'
+                    }}
+                />
+            )}
             {postedStreams.map((e) => {
                 switch (e.schema) {
                     case Schemas.commonstream:
@@ -47,7 +58,7 @@ export const PostedStreams = (props: PostedStreamsProps): JSX.Element => {
                             <Link
                                 key={e.id}
                                 component={RouterLink}
-                                to={'/stream#' + e.id}
+                                to={'/stream/' + e.id}
                                 underline="hover"
                                 sx={{
                                     fontweight: '400',
@@ -62,6 +73,7 @@ export const PostedStreams = (props: PostedStreamsProps): JSX.Element => {
                     case Schemas.utilitystream:
                         return props.useUserIcon ? (
                             <CCUserIcon
+                                key={e.id}
                                 sx={{
                                     height: '1rem',
                                     width: '1rem'
@@ -70,6 +82,7 @@ export const PostedStreams = (props: PostedStreamsProps): JSX.Element => {
                             />
                         ) : (
                             <Tooltip
+                                key={e.id}
                                 arrow
                                 placement="top"
                                 title={
