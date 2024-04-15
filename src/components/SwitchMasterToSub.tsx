@@ -23,6 +23,7 @@ import JsPDF from 'jspdf'
 import ccPaper from '../resources/cc-paper.svg'
 import { ComputeCKID, LoadKey, generateIdentity } from '@concurrent-world/client'
 import { Trans, useTranslation } from 'react-i18next'
+import CredentialStorage from "../utils/CredentialStorage";
 
 export interface SwitchMasterToSubProps {
     mnemonic: string
@@ -235,6 +236,11 @@ export default function SwitchMasterToSub(props: SwitchMasterToSubProps): JSX.El
                                     localStorage.setItem('SubKey', JSON.stringify(subkey))
                                     localStorage.removeItem('Mnemonic')
                                     localStorage.removeItem('PrivateKey')
+
+                                    CredentialStorage.setItem('SubKey', subkey, client.ccid ?? '')
+                                    CredentialStorage.destroyCurrentAccountItem('Mnemonic')
+                                    CredentialStorage.destroyCurrentAccountItem('PrivateKey')
+
                                     window.location.reload()
                                 })
                                 .catch((e) => {

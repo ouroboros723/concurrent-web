@@ -10,6 +10,7 @@ import { IconButtonWithLabel } from '../components/ui/IconButtonWithLabel'
 import { useTranslation } from 'react-i18next'
 import { Suspense, lazy, useState } from 'react'
 import { Client } from '@concurrent-world/client'
+import CredentialStorage from "../utils/CredentialStorage";
 
 const QRCodeReader = lazy(() => import('../components/ui/QRCodeReader'))
 
@@ -82,6 +83,12 @@ export function AccountImport(): JSX.Element {
                                         Client.createFromSubkey(result).then((client) => {
                                             localStorage.setItem('Domain', JSON.stringify(client.host))
                                             localStorage.setItem('SubKey', JSON.stringify(result))
+
+                                            if(typeof client.ccid === "string") {
+                                                CredentialStorage.setItem('Domain', client.host, client.ccid)
+                                                CredentialStorage.setItem('SubKey', result, client.ccid)
+                                            }
+
                                             window.location.href = '/'
                                         })
                                     } catch (e) {

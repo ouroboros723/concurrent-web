@@ -11,6 +11,7 @@ import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { useTranslation } from 'react-i18next'
+import CredentialStorage from "../../utils/CredentialStorage";
 
 export function ImportMasterKey(): JSX.Element {
     const { t } = useTranslation('', { keyPrefix: 'import' })
@@ -143,9 +144,14 @@ export function ImportMasterKey(): JSX.Element {
     const accountImport = (): void => {
         localStorage.setItem('Domain', JSON.stringify(domain))
         localStorage.setItem('PrivateKey', JSON.stringify(properKey))
+        if(typeof properCCID === "string") {
+            CredentialStorage.setItem('Domain', domain, properCCID)
+            CredentialStorage.setItem('PrivateKey', properKey, properCCID)
+        }
         const normalized = secretInput.trim().normalize('NFKD')
         if (normalized.split(' ').length === 12) {
             localStorage.setItem('Mnemonic', JSON.stringify(normalized))
+            CredentialStorage.setItem('Mnemonic', normalized, properCCID ?? '')
         }
         window.location.href = '/'
     }

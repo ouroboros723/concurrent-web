@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 import { defaultPreference } from '../context/PreferenceContext'
 import { GuestBase } from '../components/GuestBase'
+import CredentialStorage from "../utils/CredentialStorage";
 
 export function Registration(): JSX.Element {
     const location = useLocation()
@@ -66,6 +67,10 @@ export function Registration(): JSX.Element {
         localStorage.setItem('Domain', JSON.stringify(host.fqdn))
         localStorage.setItem('PrivateKey', JSON.stringify(identity.privateKey))
         localStorage.setItem('Mnemonic', JSON.stringify(identity.mnemonic_en))
+
+        CredentialStorage.setItem('Domain', host.fqdn, host.ccid)
+        CredentialStorage.setItem('PrivateKey', identity.privateKey, host.ccid)
+        CredentialStorage.setItem('Mnemonic', identity.mnemonic_en, host.ccid)
 
         console.log('hostAddr', host.ccid)
 

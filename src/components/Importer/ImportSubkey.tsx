@@ -6,6 +6,7 @@ import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { Client } from '@concurrent-world/client'
+import CredentialStorage from "../../utils/CredentialStorage";
 
 export const ImportSubkey = (): JSX.Element => {
     const { t } = useTranslation('', { keyPrefix: 'import' })
@@ -20,6 +21,12 @@ export const ImportSubkey = (): JSX.Element => {
         if (client) {
             localStorage.setItem('Domain', JSON.stringify(client.host))
             localStorage.setItem('SubKey', JSON.stringify(subkey))
+
+            if(typeof client.ccid === "string") {
+                CredentialStorage.setItem('Domain', client.host, client.ccid)
+                CredentialStorage.setItem('SubKey', subkey, client.ccid)
+            }
+
             window.location.href = '/'
         }
     }
