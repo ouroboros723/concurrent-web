@@ -9,6 +9,7 @@ import { EmojiSettings } from '../components/Settings/Emoji'
 import { MediaSettings } from '../components/Settings/Media'
 import { LoginQR } from '../components/Settings/LoginQR'
 import { APSettings } from '../components/Settings/APSettings'
+import { AccountSwitch } from '../components/Settings/AccountSwitch'
 import { IdentitySettings } from '../components/Settings/Identity'
 import { BreadcrumbList } from '../components/ui/BreadcrumbList'
 
@@ -51,6 +52,7 @@ export function Settings(): JSX.Element {
                 <Route path="/media" element={<MediaSettings />} />
                 <Route path="/activitypub" element={<APSettings />} />
                 <Route path="/loginqr" element={<LoginQR />} />
+                <Route path="/account-switch" element={<AccountSwitch />} />
             </Routes>
         </Box>
     )
